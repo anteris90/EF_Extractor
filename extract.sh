@@ -8,7 +8,7 @@ printf "============================================\n\n"
 GAME_PATH="$HOME/Library/Application Support/EVE Frontier/SharedCache"
 
 # --- Path of resfileindex.txt ---
-RESINDEX="$GAME_PATH/stillness/resfileindex.txt"
+RESINDEX="$GAME_PATH/stillness/EVE.app/Contents/Resources/build/resfileindex.txt"
 
 # --- Output folder ---
 OUT="output"
