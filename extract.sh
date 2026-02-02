@@ -1,12 +1,10 @@
 #!/bin/bash
 
-echo "============================================"
-echo "  EVE Frontier Staticdata Extractor (macOS)"
-echo "============================================"
-echo
+printf "\n============================================\n"
+printf "  EVE Frontier Staticdata Extractor (macOS)\n"
+printf "============================================\n\n"
 
 # --- Set the installation path to EVE Frontier ---
-# NOTE: This is the default SharedCache location on macOS.
 GAME_PATH="$HOME/Library/Application Support/EVE Frontier/SharedCache"
 
 # --- Path of resfileindex.txt ---
@@ -16,26 +14,19 @@ RESINDEX="$GAME_PATH/stillness/resfileindex.txt"
 OUT="output"
 
 # --- List of containers ---
-# Examples:
-#   types,groups,dogmaattributes
-#   industry_blueprints
-#   solarsystemcontent
 CONTAINERS="solarsystemcontent,systems"
 
-echo "[INFO] Checking Python version..."
-python3 --version >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "[ERROR] Python3 is not installed or not in PATH."
+printf "[INFO] Checking Python version...\n"
+if ! command -v python3 >/dev/null 2>&1; then
+    printf "[ERROR] Python3 is not installed or not in PATH.\n"
     exit 1
 fi
 
-echo "[INFO] Running extractor..."
-python3 UNI.py \
+printf "[INFO] Running extractor...\n"
+python3 EF_Extractor_Win_MacOS.py \
     -e "$GAME_PATH" \
     -i "$RESINDEX" \
     -o "$OUT" \
     -c "$CONTAINERS"
 
-echo
-echo "[DONE] Output ready in: \"$OUT\" folder."
-echo
+printf "\n[DONE] Output ready in: \"%s\" folder.\n\n" "$OUT"
