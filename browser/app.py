@@ -2,7 +2,14 @@ import json
 import os
 import time
 import sqlite3
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
+from werkzeug.utils import secure_filename
+try:
+    # tkinter is used to open a native file dialog on the server (localhost)
+    from tkinter import Tk, filedialog
+except Exception:
+    Tk = None
+    filedialog = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB_PATH = os.environ.get(
@@ -10,7 +17,7 @@ DEFAULT_DB_PATH = os.environ.get(
     os.path.abspath(os.path.join(BASE_DIR, "..", "db", "eve_universe.db")),
 )
 
-app = Flask(__name__, template_folder=".", static_folder=".", static_url_path="")
+app = Flask(__name__, template_folder=".", static_folder=".", static_url_path="/static")
 STORE_PATH = os.path.join(BASE_DIR, "saved_queries.json")
 
 MAX_HISTORY = 100
@@ -22,6 +29,93 @@ def list_tables(db_path):
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         )
         return [r[0] for r in cur.fetchall()]
+@app.route("/api/upload_db", methods=["GET", "POST", "OPTIONS"])
+@app.route("/upload_db", methods=["GET", "POST", "OPTIONS"])
+def upload_db():
+    """Accept a database file upload and save it into the repo db/ folder.
+
+    For debugging this endpoint will also respond to GET requests with a
+    small informational JSON. Successful POST returns {"name": "<saved-filename>"}.
+    """
+    # Log incoming method/path for debugging (visible in the server terminal)
+    try:
+        print(f"[upload_db] {request.method} {request.path}")
+    except Exception:
+        pass
+
+    if request.method != "POST":
+        return jsonify({"message": "Upload endpoint: POST a form field 'dbfile'"}), 200
+
+    if "dbfile" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    f = request.files["dbfile"]
+    if f.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    filename = secure_filename(f.filename)
+    lower = filename.lower()
+    if not (lower.endswith(".db") or lower.endswith(".sqlite") or lower.endswith(".sqlite3")):
+        return jsonify({"error": "Invalid file type"}), 400
+
+    db_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "db"))
+    os.makedirs(db_dir, exist_ok=True)
+    # prepend timestamp to avoid collisions
+    dest_name = f"uploaded_{int(time.time())}_{filename}"
+    dest_path = os.path.join(db_dir, dest_name)
+    try:
+        f.save(dest_path)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    # Return just the filename; the UI will post this name back and the server
+    # will resolve it to the real file under ../db/ to avoid passing absolute
+    # filesystem paths through the form.
+    return jsonify({"name": dest_name})
+
+
+@app.route("/choose_db", methods=["POST"])
+def choose_db():
+    """Open a native file chooser on the server and return the selected path.
+
+    This only works when the server is running locally with GUI access (not
+    headless). Returns JSON {"path": "<abs-path>"} or {"canceled": true}.
+    """
+    if not filedialog:
+        return jsonify({"error": "server does not have a GUI file dialog available"}), 500
+    try:
+        root = Tk()
+        root.withdraw()
+        path = filedialog.askopenfilename(
+            title="Select SQLite database",
+            filetypes=[("SQLite DB", "*.db *.sqlite *.sqlite3"), ("All files", "*")],
+        )
+        root.destroy()
+        if not path:
+            return jsonify({"canceled": True})
+        return jsonify({"path": path})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/check_db", methods=["POST"])
+def check_db():
+    """Check whether a given filename exists in the server-side db/ folder.
+
+    Expects JSON {"filename": "name.db"} and returns {"exists": bool, "path": "<abs>"}
+    """
+    try:
+        data = request.get_json(force=True)
+        filename = data.get("filename") if isinstance(data, dict) else None
+    except Exception:
+        filename = None
+    if not filename:
+        return jsonify({"exists": False}), 400
+    safe = secure_filename(filename)
+    db_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "db"))
+    candidate = os.path.join(db_dir, safe)
+    if os.path.exists(candidate):
+        return jsonify({"exists": True, "path": candidate})
+    return jsonify({"exists": False})
 
 
 def run_query(db_path, sql):
@@ -117,6 +211,16 @@ def index():
     store = load_store()
 
     db_path = request.form.get("db_path") or request.args.get("db_path") or DEFAULT_DB_PATH
+
+    # If the posted db_path is a filename saved by the upload endpoint, resolve
+    # it to the repository `db/` folder so we open the correct file on disk.
+    try:
+        if db_path and not os.path.isabs(db_path):
+            candidate = os.path.abspath(os.path.join(BASE_DIR, "..", "db", db_path))
+            if os.path.exists(candidate):
+                db_path = candidate
+    except Exception:
+        pass
 
     if request.method == "POST":
         action = request.form.get("action")
