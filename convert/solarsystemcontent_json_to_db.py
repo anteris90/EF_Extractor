@@ -46,6 +46,8 @@ cur.execute("DROP TABLE IF EXISTS npc_stations")
 cur.execute("DROP TABLE IF EXISTS systems")
 cur.execute("DROP TABLE IF EXISTS regions")
 cur.execute("DROP TABLE IF EXISTS region_constellations")
+cur.execute("DROP TABLE IF EXISTS region_solar_systems")
+cur.execute("DROP TABLE IF EXISTS region_neighbours")
 
 # --- CREATE ---
 cur.executescript("""
@@ -156,6 +158,7 @@ CREATE TABLE regions (
     regionId INTEGER PRIMARY KEY,
     descriptionId INTEGER,
     nameId INTEGER,
+    name TEXT,
     nebulaId INTEGER,
     nebulaPath TEXT,
     potential REAL,
@@ -394,7 +397,7 @@ if regions_db_path.exists():
     # Copy regions table
     regions_cur.execute("SELECT * FROM regions")
     regions_data = regions_cur.fetchall()
-    cur.executemany("INSERT OR REPLACE INTO regions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", regions_data)
+    cur.executemany("INSERT OR REPLACE INTO regions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", regions_data)
     
     # Copy region_constellations
     regions_cur.execute("SELECT * FROM region_constellations")

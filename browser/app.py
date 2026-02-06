@@ -127,15 +127,24 @@ def index():
             name = (request.form.get("saved_name") or "").strip()
             notes = (request.form.get("saved_notes") or "").strip()
             sql = normalize_query(request.form.get("saved_sql"))
+            saved_id = (request.form.get("saved_id") or "").strip()
             if not name or not sql:
                 error = "Saved query requires a name and SQL."
             elif not is_select_only(sql):
                 error = "Read-only mode: only SELECT queries can be saved."
             else:
+                if saved_id:
+                    store["saved_queries"] = [
+                        item for item in store["saved_queries"] if str(item.get("id")) != saved_id
+                    ]
+                    query_id = int(saved_id)
+                else:
+                    query_id = int(time.time() * 1000)
+
                 store["saved_queries"].insert(
                     0,
                     {
-                        "id": int(time.time() * 1000),
+                        "id": query_id,
                         "name": name,
                         "sql": sql,
                         "notes": notes,

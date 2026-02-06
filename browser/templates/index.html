@@ -46,11 +46,15 @@
             <input type="hidden" name="db_path" value="{{ db_path }}">
             <input type="hidden" name="action" value="save_query">
             <input type="hidden" name="saved_sql" id="saved_sql">
+            <input type="hidden" name="saved_id" id="saved_id">
             <label for="saved_name">Name</label>
             <input id="saved_name" name="saved_name" type="text" placeholder="Short label">
             <label for="saved_notes">Notes</label>
             <textarea id="saved_notes" name="saved_notes" rows="3" placeholder="Optional"></textarea>
-            <button type="submit" class="saved-add">Save current query</button>
+            <div class="saved-actions">
+              <button type="submit" class="saved-add" id="savedSubmit">Save current query</button>
+              <button type="button" class="saved-cancel" id="savedCancel">Cancel</button>
+            </div>
           </form>
 
           {% if saved_queries %}
@@ -58,15 +62,18 @@
             {% for item in saved_queries %}
             <li class="saved-item">
               <button type="button" class="saved-btn" data-query="{{ item.sql|e }}">{{ item.name }}</button>
-              {% if item.notes %}
-              <div class="saved-notes">{{ item.notes }}</div>
-              {% endif %}
-              <form method="post" class="saved-delete-form">
-                <input type="hidden" name="db_path" value="{{ db_path }}">
-                <input type="hidden" name="action" value="delete_saved">
-                <input type="hidden" name="saved_id" value="{{ item.id }}">
-                <button type="submit" class="saved-delete">Delete</button>
-              </form>
+              <div class="saved-meta">
+                {% if item.notes %}
+                <div class="saved-notes">{{ item.notes }}</div>
+                {% endif %}
+                <button type="button" class="saved-edit" data-id="{{ item.id }}" data-name="{{ item.name|e }}" data-notes="{{ item.notes|e }}" data-sql="{{ item.sql|e }}">Edit</button>
+                <form method="post" class="saved-delete-form">
+                  <input type="hidden" name="db_path" value="{{ db_path }}">
+                  <input type="hidden" name="action" value="delete_saved">
+                  <input type="hidden" name="saved_id" value="{{ item.id }}">
+                  <button type="submit" class="saved-delete">Delete</button>
+                </form>
+              </div>
             </li>
             {% endfor %}
           </ul>
@@ -120,11 +127,22 @@
           <span>Time: {{ elapsed_ms }} ms</span>
           {% endif %}
         </div>
+        <div class="column-panel" data-db-path="{{ db_path }}" data-columns='{{ columns|tojson }}'>
+          <div class="column-title">Columns</div>
+          <div class="column-list">
+            {% for col in columns %}
+            <label class="hide-col column-item">
+              <input type="checkbox" class="column-toggle" data-col-index="{{ loop.index }}" data-col-name="{{ col|e }}" checked>
+              <span>{{ col }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
         <div class="table-wrap">
           <div class="table-scroll">
             <table>
             <thead>
-              <tr>
+              <tr class="header-row">
                 <th class="row-index">#</th>
                 {% for col in columns %}
                 <th>{{ col }}</th>
@@ -211,11 +229,42 @@ Describe the query you need here.</textarea>
 
     const savedForm = document.querySelector(".saved-form");
     const savedSqlInput = document.getElementById("saved_sql");
+    const savedIdInput = document.getElementById("saved_id");
+    const savedNameInput = document.getElementById("saved_name");
+    const savedNotesInput = document.getElementById("saved_notes");
+    const savedSubmit = document.getElementById("savedSubmit");
+    const savedCancel = document.getElementById("savedCancel");
     if (savedForm && savedSqlInput) {
       savedForm.addEventListener("submit", () => {
         savedSqlInput.value = queryBox.value.trim();
       });
     }
+
+    const clearSavedForm = () => {
+      if (savedIdInput) savedIdInput.value = "";
+      if (savedNameInput) savedNameInput.value = "";
+      if (savedNotesInput) savedNotesInput.value = "";
+      if (savedSubmit) savedSubmit.textContent = "Save current query";
+      if (savedCancel) savedCancel.style.display = "none";
+    };
+
+    document.querySelectorAll(".saved-edit").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (savedIdInput) savedIdInput.value = btn.dataset.id || "";
+        if (savedNameInput) savedNameInput.value = btn.dataset.name || "";
+        if (savedNotesInput) savedNotesInput.value = btn.dataset.notes || "";
+        if (savedSubmit) savedSubmit.textContent = "Update query";
+        if (savedCancel) savedCancel.style.display = "inline-block";
+        queryBox.value = btn.dataset.sql || "";
+        queryBox.focus();
+      });
+    });
+
+    if (savedCancel) {
+      savedCancel.addEventListener("click", clearSavedForm);
+    }
+
+    clearSavedForm();
 
     const tipBtn = document.getElementById("tipBtn");
     const tipModal = document.getElementById("tipModal");
@@ -263,10 +312,13 @@ Describe the query you need here.</textarea>
     const resultsTable = document.querySelector(".table-scroll table");
     if (resultsTable) {
       const filterInputs = resultsTable.querySelectorAll(".filter-input");
+      const columnToggles = document.querySelectorAll(".column-toggle");
       const bodyRows = Array.from(resultsTable.tBodies[0].rows);
 
       const applyFilters = () => {
-        const filters = Array.from(filterInputs).map((input) => input.value.trim().toLowerCase());
+        const filters = Array.from(filterInputs).map((input) =>
+          input.disabled ? "" : input.value.trim().toLowerCase()
+        );
         bodyRows.forEach((row) => {
           let visible = true;
           filters.forEach((value, index) => {
@@ -281,9 +333,75 @@ Describe the query you need here.</textarea>
         });
       };
 
+      const columnPanel = document.querySelector(".column-panel");
+      const dbPath = columnPanel ? columnPanel.dataset.dbPath : "";
+      const columnsList = columnPanel ? JSON.parse(columnPanel.dataset.columns || "[]") : [];
+      const storageKey = `hiddenColumns:${dbPath}:${columnsList.join("|")}`;
+
+      const applyColumnVisibility = () => {
+        const hidden = new Set(
+          Array.from(columnToggles)
+            .filter((toggle) => !toggle.checked)
+            .map((toggle) => Number(toggle.dataset.colIndex))
+        );
+        const headerRow = resultsTable.querySelector(".header-row");
+        const filterRow = resultsTable.querySelector(".filter-row");
+        const rowsToUpdate = [headerRow, filterRow, ...bodyRows].filter(Boolean);
+        rowsToUpdate.forEach((row) => {
+          Array.from(row.cells).forEach((cell, idx) => {
+            if (idx === 0) return;
+            const colIndex = idx;
+            cell.style.display = hidden.has(colIndex) ? "none" : "";
+          });
+        });
+
+        if (filterRow) {
+          Array.from(filterRow.cells).forEach((cell, idx) => {
+            if (idx === 0) return;
+            const colIndex = idx;
+            const input = cell.querySelector(".filter-input");
+            if (hidden.has(colIndex)) {
+              if (input) {
+                input.value = "";
+                input.disabled = true;
+              }
+            } else {
+              if (input) {
+                input.disabled = false;
+              }
+            }
+          });
+        }
+
+        applyFilters();
+
+        if (storageKey) {
+          const hiddenNames = Array.from(columnToggles)
+            .filter((toggle) => !toggle.checked)
+            .map((toggle) => toggle.dataset.colName)
+            .filter(Boolean);
+          localStorage.setItem(storageKey, JSON.stringify(hiddenNames));
+        }
+      };
+
       filterInputs.forEach((input) => {
         input.addEventListener("input", applyFilters);
       });
+
+      if (columnToggles.length) {
+        const savedHidden = storageKey ? JSON.parse(localStorage.getItem(storageKey) || "[]") : [];
+        if (savedHidden.length) {
+          columnToggles.forEach((toggle) => {
+            if (savedHidden.includes(toggle.dataset.colName)) {
+              toggle.checked = false;
+            }
+          });
+        }
+        columnToggles.forEach((toggle) => {
+          toggle.addEventListener("change", applyColumnVisibility);
+        });
+        applyColumnVisibility();
+      }
     }
 
   </script>

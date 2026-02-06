@@ -9,6 +9,7 @@ OUTPUT_DIR = ROOT_DIR / "output"
 DB_DIR = ROOT_DIR / "db"
 
 JSON_PATH = OUTPUT_DIR / "regions.json"
+LOCALIZATION_JSON = OUTPUT_DIR / "localization.json"
 DB_PATH = DB_DIR / "regions.db"
 
 # ----- ENSURE DB DIR EXISTS -----
@@ -17,6 +18,18 @@ os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 # ----- LOAD JSON -----
 with open(JSON_PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
+
+with open(LOCALIZATION_JSON, "r", encoding="utf-8") as f:
+    localization = json.load(f)
+
+def normalize_name(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return value[0] if value else None
+    return str(value)
 
 # ----- CONNECT SQLITE -----
 conn = sqlite3.connect(DB_PATH)
@@ -34,6 +47,7 @@ CREATE TABLE IF NOT EXISTS regions (
     regionId INTEGER PRIMARY KEY,
     descriptionId INTEGER,
     nameId INTEGER,
+    name TEXT,
     nebulaId INTEGER,
     nebulaPath TEXT,
     potential REAL,
@@ -54,11 +68,16 @@ CREATE TABLE IF NOT EXISTS region_constellations (
 for regionId_str, region in data.items():
     regionId = int(regionId_str)
 
+    name_id = region.get("nameID")
+    raw_name = localization.get(str(name_id)) if name_id else None
+    name = normalize_name(raw_name)
+
     cur.execute("""
         INSERT OR REPLACE INTO regions (
             regionId,
             descriptionId,
             nameId,
+            name,
             nebulaId,
             nebulaPath,
             potential,
@@ -66,11 +85,12 @@ for regionId_str, region in data.items():
             sectorId,
             wormholeClassId,
             zoneLevel
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         regionId,
         region.get("descriptionID"),
-        region.get("nameID"),
+        name_id,
+        name,
         region.get("nebulaID"),
         region.get("nebulaPath"),
         region.get("potential"),
