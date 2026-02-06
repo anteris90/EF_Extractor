@@ -32,6 +32,27 @@ A simple Flask web application to browse and query a SQLite database (raw SQL, r
 - **output/**: Extracted JSON files
 - **browser/**: Web interface for database browsing
 
+## Git LFS (required for output JSON)
+
+The large JSON files in **output/** are stored with Git LFS. If you see tiny files that contain
+`version https://git-lfs.github.com/spec/v1`, your LFS objects were not downloaded and the
+converter will fail with JSON decode errors.
+
+Install and pull LFS objects:
+
+```bash
+git lfs install
+git lfs pull
+```
+
+If Git LFS is not installed yet (macOS):
+
+```bash
+brew install git-lfs
+git lfs install
+git lfs pull
+```
+
 ## Requirements
 
 - **Python 3.12** (mandatory for extractor - game loaders are compiled for 3.12)
