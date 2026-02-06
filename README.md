@@ -23,7 +23,7 @@ A simple Flask web application to browse and query the `eve_universe.db` databas
 ## Files and Folders
 
 - **convert/**: Conversion scripts
-- **db/**: Output databases (`eve_universe.db`, `locationcache.db`)
+- **db/**: Output databases (`eve_universe.db`)
 - **output/**: Extracted JSON files
 - **browser/**: Web interface for database browsing
 - **archive/**: Original scripts and documentation
@@ -133,3 +133,4 @@ Then open http://localhost:5000 in your browser. Note: Update `DB_PATH` in `app.
 ## Contact
 
 If you have questions, review the scripts or ask.
+
