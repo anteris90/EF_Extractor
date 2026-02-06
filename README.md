@@ -11,7 +11,7 @@ Extracts static data from the EVE Frontier game client into JSON files.
 Converts the extracted JSON files into a unified SQLite database (`eve_universe.db`).
 
 ### 3. Database Browser (Web Interface)
-A simple Flask web application to browse and query the `eve_universe.db` database.
+A simple Flask web application to browse and query a SQLite database.
 
 ## Features
 
@@ -70,8 +70,6 @@ py -3.12 debug_resfile.py ^
 
 ### Database Browser
 
-**Note**: The web interface is currently a work in progress and may not function properly.
-
 To run the web interface for browsing the database:
 
 ```bash
@@ -80,6 +78,13 @@ python app.py
 ```
 
 Then open http://localhost:5000 in your browser. Note: Update `DB_PATH` in `app.py` to point to `eve_universe.db` if needed.
+
+You can also set `EF_DB_PATH` to preselect a database path:
+
+```bash
+set EF_DB_PATH=..\db\eve_universe.db
+python app.py
+```
 
 ## Database Structure (eve_universe.db)
 

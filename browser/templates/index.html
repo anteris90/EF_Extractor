@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQLite Browser</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div>
+        <h1>SQLite Browser</h1>
+        <p class="sub">Raw SQL explorer for a local SQLite database.</p>
+      </div>
+      <div class="dbpath">
+        <label for="db_path">Database path</label>
+        <form method="post" class="dbpath-form">
+          <input id="db_path" name="db_path" type="text" value="{{ db_path }}">
+          <button type="submit">Open</button>
+        </form>
+        {% if db_error %}
+        <div class="alert error">Database error: {{ db_error }}</div>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Tables</h2>
+        {% if tables %}
+        <ul class="table-list">
+          {% for table in tables %}
+          <li>
+            <button type="button" class="table-btn" data-table="{{ table|e }}">{{ table }}</button>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No tables found.</p>
+        {% endif %}
+      </aside>
+
+      <section class="content">
+        <form method="post" class="query-form">
+          <input type="hidden" name="db_path" value="{{ db_path }}">
+          <label for="query">SQL query</label>
+          <textarea id="query" name="query" rows="10">{{ query }}</textarea>
+          <div class="actions">
+            <button type="submit">Run query</button>
+            <button type="button" id="btn-example">Insert example</button>
+          </div>
+        </form>
+
+        {% if error %}
+        <div class="alert error">{{ error }}</div>
+        {% endif %}
+
+        {% if columns %}
+        <div class="meta">
+          <span>Rows: {{ rows|length }}</span>
+          {% if elapsed_ms is not none %}
+          <span>Time: {{ elapsed_ms }} ms</span>
+          {% endif %}
+        </div>
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+            <thead>
+              <tr>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                {% for col in columns %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+            </table>
+          </div>
+        </div>
+        {% elif rowcount is not none %}
+        <div class="meta">
+          <span>Rows affected: {{ rowcount }}</span>
+          {% if elapsed_ms is not none %}
+          <span>Time: {{ elapsed_ms }} ms</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const queryBox = document.getElementById("query");
+    const exampleBtn = document.getElementById("btn-example");
+    document.querySelectorAll(".table-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const table = btn.dataset.table;
+        queryBox.value = `SELECT * FROM "${table}" LIMIT 50;`;
+        queryBox.focus();
+      });
+    });
+    exampleBtn.addEventListener("click", () => {
+      queryBox.value = "SELECT name, type FROM sqlite_master WHERE type='table' ORDER BY name;";
+      queryBox.focus();
+    });
+
+  </script>
+</body>
+</html>
