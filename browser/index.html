@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQLite Browser</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div>
+        <h1>SQLite Browser</h1>
+        <p class="sub">Raw SQL explorer for a local SQLite database.</p>
+      </div>
+      <div class="dbpath">
+        <label for="db_path">Database path</label>
+        <form method="post" class="dbpath-form">
+          <input id="db_path" name="db_path" type="text" value="{{ db_path }}">
+          <button type="submit">Open</button>
+        </form>
+        {% if db_error %}
+        <div class="alert error">Database error: {{ db_error }}</div>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Tables</h2>
+        {% if tables %}
+        <ul class="table-list">
+          {% for table in tables %}
+          <li>
+            <button type="button" class="table-btn" data-table="{{ table|e }}">{{ table }}</button>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted">No tables found.</p>
+        {% endif %}
+
+        <div class="sidebar-section">
+          <h3>Saved queries</h3>
+          <form method="post" class="saved-form">
+            <input type="hidden" name="db_path" value="{{ db_path }}">
+            <input type="hidden" name="action" value="save_query">
+            <input type="hidden" name="saved_sql" id="saved_sql">
+            <input type="hidden" name="saved_id" id="saved_id">
+            <label for="saved_name">Name</label>
+            <input id="saved_name" name="saved_name" type="text" placeholder="Short label">
+            <label for="saved_notes">Notes</label>
+            <textarea id="saved_notes" name="saved_notes" rows="3" placeholder="Optional"></textarea>
+            <div class="saved-actions">
+              <button type="submit" class="saved-add" id="savedSubmit">Save current query</button>
+              <button type="button" class="saved-cancel" id="savedCancel">Cancel</button>
+            </div>
+          </form>
+
+          {% if saved_queries %}
+          <ul class="saved-list">
+            {% for item in saved_queries %}
+            <li class="saved-item">
+              <button type="button" class="saved-btn" data-query="{{ item.sql|e }}">{{ item.name }}</button>
+              <div class="saved-meta">
+                {% if item.notes %}
+                <div class="saved-notes">{{ item.notes }}</div>
+                {% endif %}
+                <button type="button" class="saved-edit" data-id="{{ item.id }}" data-name="{{ item.name|e }}" data-notes="{{ item.notes|e }}" data-sql="{{ item.sql|e }}">Edit</button>
+                <form method="post" class="saved-delete-form">
+                  <input type="hidden" name="db_path" value="{{ db_path }}">
+                  <input type="hidden" name="action" value="delete_saved">
+                  <input type="hidden" name="saved_id" value="{{ item.id }}">
+                  <button type="submit" class="saved-delete">Delete</button>
+                </form>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No saved queries.</p>
+          {% endif %}
+        </div>
+
+        <div class="sidebar-section">
+          <h3>History</h3>
+          {% if query_history %}
+          <form method="post" class="history-actions">
+            <input type="hidden" name="db_path" value="{{ db_path }}">
+            <input type="hidden" name="action" value="clear_history">
+            <button type="submit" class="history-clear">Clear history</button>
+          </form>
+          <ul class="history-list">
+            {% for q in query_history %}
+            <li>
+              <button type="button" class="history-btn" data-query="{{ q|e }}">{{ q }}</button>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No recent queries.</p>
+          {% endif %}
+        </div>
+      </aside>
+
+      <section class="content">
+        <form method="post" class="query-form">
+          <input type="hidden" name="db_path" value="{{ db_path }}">
+          <div class="query-header">
+            <label for="query">SQL query:</label>
+            <button type="button" class="tip-btn" id="tipBtn" title="AI prompt tip">💡 Tip - Help</button>
+          </div>
+          <textarea id="query" name="query" rows="10">{{ query }}</textarea>
+          <div class="actions">
+            <button type="submit">Run query</button>
+          </div>
+        </form>
+
+        {% if error %}
+        <div class="alert error">{{ error }}</div>
+        {% endif %}
+
+        {% if columns %}
+        <div class="meta">
+          <span>Rows: {{ rows|length }}</span>
+          {% if elapsed_ms is not none %}
+          <span>Time: {{ elapsed_ms }} ms</span>
+          {% endif %}
+        </div>
+        <div class="column-panel" data-db-path="{{ db_path }}" data-columns='{{ columns|tojson }}'>
+          <div class="column-title">Columns (Show/Hide)</div>
+          <div class="column-list">
+            {% for col in columns %}
+            <label class="hide-col column-item">
+              <input type="checkbox" class="column-toggle" data-col-index="{{ loop.index }}" data-col-name="{{ col|e }}" checked>
+              <span>{{ col }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+            <thead>
+              <tr class="header-row">
+                <th class="row-index">#</th>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+              <tr class="filter-row">
+                <th class="row-index"></th>
+                {% for col in columns %}
+                <th class="filter-cell">
+                  <input type="text" class="filter-input" data-col-index="{{ loop.index }}" placeholder="Filter">
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                <td class="row-index">{{ loop.index }}</td>
+                {% for col in columns %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+            </table>
+          </div>
+        </div>
+        {% elif rowcount is not none %}
+        <div class="meta">
+          <span>Rows affected: {{ rowcount }}</span>
+          {% if elapsed_ms is not none %}
+          <span>Time: {{ elapsed_ms }} ms</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="tipModal" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-content" role="document">
+      <div class="modal-header">
+        <h3>AI prompt helper</h3>
+        <button type="button" class="modal-close" data-close="true">Close</button>
+      </div>
+      <p class="modal-sub">Copy this prompt into your AI tool to generate SQL queries for this database.</p>
+      <textarea id="tipPrompt" readonly rows="12">You are a data analyst. Generate SQLite SELECT-only queries for this database.
+
+Tables:
+{% for table in tables %}- {{ table }}{% if table_columns.get(table) %}: {{ table_columns[table]|join(', ') }}{% endif %}
+{% endfor %}
+
+Rules:
+- Use SELECT only. No INSERT/UPDATE/DELETE.
+    - Use the table/column list above (column types included).
+    - Show table and column names explicitly.
+- Keep queries readable with aliases.
+- Ask clarifying questions if needed.
+
+Task:
+Describe the query you need here.</textarea>
+      <div class="modal-actions">
+        <button type="button" id="copyTip">Copy prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const queryBox = document.getElementById("query");
+    document.querySelectorAll(".table-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const table = btn.dataset.table;
+        queryBox.value = `SELECT * FROM "${table}" LIMIT 100;`;
+        queryBox.focus();
+      });
+    });
+
+    document.querySelectorAll(".history-btn, .saved-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        queryBox.value = btn.dataset.query;
+        queryBox.focus();
+      });
+    });
+
+    const savedForm = document.querySelector(".saved-form");
+    const savedSqlInput = document.getElementById("saved_sql");
+    const savedIdInput = document.getElementById("saved_id");
+    const savedNameInput = document.getElementById("saved_name");
+    const savedNotesInput = document.getElementById("saved_notes");
+    const savedSubmit = document.getElementById("savedSubmit");
+    const savedCancel = document.getElementById("savedCancel");
+    if (savedForm && savedSqlInput) {
+      savedForm.addEventListener("submit", () => {
+        savedSqlInput.value = queryBox.value.trim();
+      });
+    }
+
+    const clearSavedForm = () => {
+      if (savedIdInput) savedIdInput.value = "";
+      if (savedNameInput) savedNameInput.value = "";
+      if (savedNotesInput) savedNotesInput.value = "";
+      if (savedSubmit) savedSubmit.textContent = "Save current query";
+      if (savedCancel) savedCancel.style.display = "none";
+    };
+
+    document.querySelectorAll(".saved-edit").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (savedIdInput) savedIdInput.value = btn.dataset.id || "";
+        if (savedNameInput) savedNameInput.value = btn.dataset.name || "";
+        if (savedNotesInput) savedNotesInput.value = btn.dataset.notes || "";
+        if (savedSubmit) savedSubmit.textContent = "Update query";
+        if (savedCancel) savedCancel.style.display = "inline-block";
+        queryBox.value = btn.dataset.sql || "";
+        queryBox.focus();
+      });
+    });
+
+    if (savedCancel) {
+      savedCancel.addEventListener("click", clearSavedForm);
+    }
+
+    clearSavedForm();
+
+    const tipBtn = document.getElementById("tipBtn");
+    const tipModal = document.getElementById("tipModal");
+    const copyTip = document.getElementById("copyTip");
+    const tipPrompt = document.getElementById("tipPrompt");
+
+    const closeModal = () => {
+      tipModal.classList.remove("open");
+      tipModal.setAttribute("aria-hidden", "true");
+    };
+
+    if (tipBtn && tipModal) {
+      tipBtn.addEventListener("click", () => {
+        tipModal.classList.add("open");
+        tipModal.setAttribute("aria-hidden", "false");
+        tipPrompt.select();
+      });
+      tipModal.addEventListener("click", (event) => {
+        if (event.target && event.target.dataset.close) {
+          closeModal();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      });
+    }
+
+    if (copyTip && tipPrompt) {
+      copyTip.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(tipPrompt.value);
+          copyTip.textContent = "Copied";
+          setTimeout(() => {
+            copyTip.textContent = "Copy prompt";
+          }, 1200);
+        } catch (err) {
+          tipPrompt.select();
+          document.execCommand("copy");
+        }
+      });
+    }
+
+    const resultsTable = document.querySelector(".table-scroll table");
+    if (resultsTable) {
+      const filterInputs = resultsTable.querySelectorAll(".filter-input");
+      const columnToggles = document.querySelectorAll(".column-toggle");
+      const bodyRows = Array.from(resultsTable.tBodies[0].rows);
+
+      const applyFilters = () => {
+        const filters = Array.from(filterInputs).map((input) =>
+          input.disabled ? "" : input.value.trim().toLowerCase()
+        );
+        bodyRows.forEach((row) => {
+          let visible = true;
+          filters.forEach((value, index) => {
+            if (!value || !visible) return;
+            const cell = row.cells[index + 1];
+            const text = cell ? cell.textContent.trim().toLowerCase() : "";
+            if (!text.includes(value)) {
+              visible = false;
+            }
+          });
+          row.style.display = visible ? "" : "none";
+        });
+      };
+
+      const columnPanel = document.querySelector(".column-panel");
+      const dbPath = columnPanel ? columnPanel.dataset.dbPath : "";
+      const columnsList = columnPanel ? JSON.parse(columnPanel.dataset.columns || "[]") : [];
+      const storageKey = `hiddenColumns:${dbPath}:${columnsList.join("|")}`;
+
+      const applyColumnVisibility = () => {
+        const hidden = new Set(
+          Array.from(columnToggles)
+            .filter((toggle) => !toggle.checked)
+            .map((toggle) => Number(toggle.dataset.colIndex))
+        );
+        const headerRow = resultsTable.querySelector(".header-row");
+        const filterRow = resultsTable.querySelector(".filter-row");
+        const rowsToUpdate = [headerRow, filterRow, ...bodyRows].filter(Boolean);
+        rowsToUpdate.forEach((row) => {
+          Array.from(row.cells).forEach((cell, idx) => {
+            if (idx === 0) return;
+            const colIndex = idx;
+            cell.style.display = hidden.has(colIndex) ? "none" : "";
+          });
+        });
+
+        if (filterRow) {
+          Array.from(filterRow.cells).forEach((cell, idx) => {
+            if (idx === 0) return;
+            const colIndex = idx;
+            const input = cell.querySelector(".filter-input");
+            if (hidden.has(colIndex)) {
+              if (input) {
+                input.value = "";
+                input.disabled = true;
+              }
+            } else {
+              if (input) {
+                input.disabled = false;
+              }
+            }
+          });
+        }
+
+        applyFilters();
+
+        if (storageKey) {
+          const hiddenNames = Array.from(columnToggles)
+            .filter((toggle) => !toggle.checked)
+            .map((toggle) => toggle.dataset.colName)
+            .filter(Boolean);
+          localStorage.setItem(storageKey, JSON.stringify(hiddenNames));
+        }
+      };
+
+      filterInputs.forEach((input) => {
+        input.addEventListener("input", applyFilters);
+      });
+
+      if (columnToggles.length) {
+        const savedHidden = storageKey ? JSON.parse(localStorage.getItem(storageKey) || "[]") : [];
+        if (savedHidden.length) {
+          columnToggles.forEach((toggle) => {
+            if (savedHidden.includes(toggle.dataset.colName)) {
+              toggle.checked = false;
+            }
+          });
+        }
+        columnToggles.forEach((toggle) => {
+          toggle.addEventListener("change", applyColumnVisibility);
+        });
+        applyColumnVisibility();
+      }
+    }
+
+  </script>
+</body>
+</html>

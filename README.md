@@ -11,7 +11,7 @@ Extracts static data from the EVE Frontier game client into JSON files.
 Converts the extracted JSON files into a unified SQLite database (`eve_universe.db`).
 
 ### 3. Database Browser (Web Interface)
-A simple Flask web application to browse and query a SQLite database.
+A simple Flask web application to browse and query a SQLite database (raw SQL, read-only).
 
 ## Features
 
@@ -19,6 +19,11 @@ A simple Flask web application to browse and query a SQLite database.
 - **Converter**: Processes JSON files into a comprehensive SQLite database with all EVE universe data
 - **Unified Database**: Single `eve_universe.db` containing types, systems, planets, moons, stars, stargates, NPC stations, and regions
 - **Web Browser**: Simple web interface to explore the database tables and run queries
+- **Read-only SQL**: Only `SELECT` queries are allowed
+- **Saved queries**: Store/edit/delete named queries (persisted in `browser/saved_queries.json`)
+- **Query history**: Last 100 queries with a scrollable list
+- **Table tools**: Per-column filtering and column hide/show controls
+- **AI prompt helper**: Built-in prompt with table/column details for external AI tools
 
 ## Files and Folders
 
@@ -77,7 +82,7 @@ cd browser
 python app.py
 ```
 
-Then open http://localhost:5000 in your browser. Note: Update `DB_PATH` in `app.py` to point to `eve_universe.db` if needed.
+Then open http://localhost:5000 in your browser.
 
 You can also set `EF_DB_PATH` to preselect a database path:
 
@@ -86,37 +91,25 @@ set EF_DB_PATH=..\db\eve_universe.db
 python app.py
 ```
 
+Notes:
+- The template is served from `browser/index.html` (Flask template).
+- Saved queries and history persist in `browser/saved_queries.json`.
+- Column hide settings are stored locally in your browser (localStorage).
+
 ## Database Structure (eve_universe.db)
 
-### Tables and Records
+### Tables (current schema)
 
-- **types** (32,212 records): Type/item data.  
-  Columns: typeID, typeNameID, name, groupID, volume, mass, capacity, radius, published, basePrice, descriptionID, graphicID, raceID, portionSize, platforms.
-
-- **systems** (24,426 records): System basic data + statistics + station flag.  
-  Columns: solarSystemID, nameID, name, securityStatus, securityClass, regionID, constellationID, center_x/y/z, sunTypeID, sunFlareGraphicID, station, + statistics (density, temperature, etc.).
-
-- **planets** (83,257 records): Planet detailed data.  
-  Columns: solarSystemID, planetID, celestialIndex, typeID, radius, + statistics.
-
-- **moons** (147,060 records): Moon detailed data.  
-  Columns: planetID, moonID, orbitID, typeID, radius, + statistics.
-
-- **stargates** (6,876 records): Gate data.  
-  Columns: solarSystemID, stargateID, destination, typeID, position_x/y/z.
-
-- **npc_stations** (98 records): NPC stations.  
-  Columns: celestialID, stationID, constructableTypeListID, isConquerable, lagrangePoint, operationID, orbitID, ownerID, reprocessingEfficiency, reprocessingHangarFlag, reprocessingStationsTake, solarSystemID, stationName, typeID, useOperationName.
-
-- **stars** (24,426 records): Star data.  
-  Columns: solarSystemID, starID, typeID, radius, spectralClass, temperature.
-
-- **regions** (284 records): Region data.  
-  Columns: region_id, description_id, name_id, nebula_id, nebula_path, potential, region_level, sector_id, wormhole_class_id, zone_level.
-
-- **region_constellations, region_solar_systems, region_neighbours**: Region connections.
-
-- **system_planets** (old, for compatibility, 83,257 records): planetID list per system.
+- **types**: Type/item data.
+- **systems**: System data + statistics + station flag.
+- **planets**: Planet data.
+- **moons**: Moon data.
+- **stargates**: Gate data.
+- **npc_stations**: NPC stations.
+- **stars**: Star data.
+- **regions**: Region data (includes `name`).
+- **region_constellations**: Region connections.
+- **system_planets**: Planet list per system.
 
 ### Key Notes
 

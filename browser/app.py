@@ -10,7 +10,7 @@ DEFAULT_DB_PATH = os.environ.get(
     os.path.abspath(os.path.join(BASE_DIR, "..", "db", "eve_universe.db")),
 )
 
-app = Flask(__name__, template_folder="templates", static_folder=".", static_url_path="")
+app = Flask(__name__, template_folder=".", static_folder=".", static_url_path="")
 STORE_PATH = os.path.join(BASE_DIR, "saved_queries.json")
 
 MAX_HISTORY = 100
