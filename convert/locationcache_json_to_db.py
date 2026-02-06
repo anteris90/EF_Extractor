@@ -1,17 +1,22 @@
 import json
 import sqlite3
-import os
 from pathlib import Path
 
 # -------- PATHS --------
-ROOT_DIR = Path(__file__).resolve().parent.parent
+def find_repo_root(start_dir: Path) -> Path:
+    for candidate in (start_dir, *start_dir.parents):
+        if (candidate / "convert").is_dir() and (candidate / "db").is_dir():
+            return candidate
+    return start_dir.parent
+
+ROOT_DIR = find_repo_root(Path(__file__).resolve().parent)
 OUTPUT_DIR = ROOT_DIR / "output"
 DB_DIR = ROOT_DIR / "db"
 
 JSON_PATH = OUTPUT_DIR / "locationcache.json"
 DB_PATH = DB_DIR / "locationcache.db"
 
-os.makedirs("db", exist_ok=True)
+DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # -------- LOAD JSON --------
 with open(JSON_PATH, "r", encoding="utf-8") as f:

@@ -5,8 +5,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+def find_repo_root(start_dir: Path) -> Path:
+    for candidate in (start_dir, *start_dir.parents):
+        if (candidate / "convert").is_dir() and (candidate / "db").is_dir():
+            return candidate
+    return start_dir.parent
+
 # Path to the convert directory where converters are located
 CONVERT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = find_repo_root(CONVERT_DIR)
 
 # List of converters to run, corresponding to JSON files in output/
 converters = [
@@ -36,12 +43,12 @@ def main():
             print(f"[WARNING] {converter} not found.")
 
     # Delete temporary databases as they are integrated into eve_universe.db and no longer needed
-    regions_db = CONVERT_DIR.parent / 'db' / 'regions.db'
+    regions_db = ROOT_DIR / 'db' / 'regions.db'
     if regions_db.exists():
         regions_db.unlink()
         print("Deleted regions.db as it's no longer needed.")
 
-    locationcache_db = CONVERT_DIR.parent / 'db' / 'locationcache.db'
+    locationcache_db = ROOT_DIR / 'db' / 'locationcache.db'
     if locationcache_db.exists():
         try:
             locationcache_db.unlink()
@@ -49,7 +56,7 @@ def main():
         except PermissionError:
             print("Could not delete locationcache.db (file in use), but it's no longer needed.")
 
-    types_db = CONVERT_DIR.parent / 'db' / 'types.db'
+    types_db = ROOT_DIR / 'db' / 'types.db'
     if types_db.exists():
         try:
             types_db.unlink()
