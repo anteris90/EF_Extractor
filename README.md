@@ -45,7 +45,7 @@ EXTRACT.bat
 
 Or manually:
 ```bash
-py -3.12 EF_Extractor_Win_MacOS_V3.3.py ^
+py -3.12 EF_Extractor_V3.3.py ^
     -e "C:\Program Files\EVE Frontier" ^
     -i "C:\Program Files\EVE Frontier\stillness\resfileindex.txt" ^
     -o "output" ^
@@ -133,4 +133,5 @@ Then open http://localhost:5000 in your browser. Note: Update `DB_PATH` in `app.
 ## Contact
 
 If you have questions, review the scripts or ask.
+
 
