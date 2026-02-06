@@ -24,8 +24,12 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 with open(JSON_PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-with open(LOCALIZATION_JSON, "r", encoding="utf-8") as f:
-    localization = json.load(f)
+if LOCALIZATION_JSON.exists():
+    with open(LOCALIZATION_JSON, "r", encoding="utf-8") as f:
+        localization = json.load(f)
+else:
+    localization = {}
+    print("[WARN] localization.json not found; names will be missing")
 
 def normalize_name(value):
     if value is None:

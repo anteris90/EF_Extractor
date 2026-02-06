@@ -29,8 +29,12 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 with SOLARSYSTEMCONTENT_JSON.open("r", encoding="utf-8") as f:
     solarsystemcontent = json.load(f)
 
-with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
-    localization = json.load(f)
+if LOCALIZATION_JSON.exists():
+    with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
+        localization = json.load(f)
+else:
+    localization = {}
+    print("[WARN] localization.json not found; names will be missing")
 
 # Load systems.json for nameID etc.
 SYSTEMS_JSON = OUTPUT_DIR / "systems.json"

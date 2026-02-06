@@ -29,8 +29,12 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 with SYSTEMS_JSON.open("r", encoding="utf-8") as f:
     systems = json.load(f)
 
-with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
-    localization = json.load(f)
+if LOCALIZATION_JSON.exists():
+    with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
+        localization = json.load(f)
+else:
+    localization = {}
+    print("[WARN] localization.json not found; names will be missing")
 
 # =====================
 # SQLITE SETUP
