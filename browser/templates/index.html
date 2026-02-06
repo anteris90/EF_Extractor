@@ -39,16 +39,73 @@
         {% else %}
         <p class="muted">No tables found.</p>
         {% endif %}
+
+        <div class="sidebar-section">
+          <h3>Saved queries</h3>
+          <form method="post" class="saved-form">
+            <input type="hidden" name="db_path" value="{{ db_path }}">
+            <input type="hidden" name="action" value="save_query">
+            <input type="hidden" name="saved_sql" id="saved_sql">
+            <label for="saved_name">Name</label>
+            <input id="saved_name" name="saved_name" type="text" placeholder="Short label">
+            <label for="saved_notes">Notes</label>
+            <textarea id="saved_notes" name="saved_notes" rows="3" placeholder="Optional"></textarea>
+            <button type="submit" class="saved-add">Save current query</button>
+          </form>
+
+          {% if saved_queries %}
+          <ul class="saved-list">
+            {% for item in saved_queries %}
+            <li class="saved-item">
+              <button type="button" class="saved-btn" data-query="{{ item.sql|e }}">{{ item.name }}</button>
+              {% if item.notes %}
+              <div class="saved-notes">{{ item.notes }}</div>
+              {% endif %}
+              <form method="post" class="saved-delete-form">
+                <input type="hidden" name="db_path" value="{{ db_path }}">
+                <input type="hidden" name="action" value="delete_saved">
+                <input type="hidden" name="saved_id" value="{{ item.id }}">
+                <button type="submit" class="saved-delete">Delete</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No saved queries.</p>
+          {% endif %}
+        </div>
+
+        <div class="sidebar-section">
+          <h3>History</h3>
+          {% if query_history %}
+          <form method="post" class="history-actions">
+            <input type="hidden" name="db_path" value="{{ db_path }}">
+            <input type="hidden" name="action" value="clear_history">
+            <button type="submit" class="history-clear">Clear history</button>
+          </form>
+          <ul class="history-list">
+            {% for q in query_history %}
+            <li>
+              <button type="button" class="history-btn" data-query="{{ q|e }}">{{ q }}</button>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No recent queries.</p>
+          {% endif %}
+        </div>
       </aside>
 
       <section class="content">
         <form method="post" class="query-form">
           <input type="hidden" name="db_path" value="{{ db_path }}">
-          <label for="query">SQL query</label>
+          <div class="query-header">
+            <label for="query">SQL query:</label>
+            <button type="button" class="tip-btn" id="tipBtn" title="AI prompt tip">💡 Tip</button>
+          </div>
           <textarea id="query" name="query" rows="10">{{ query }}</textarea>
           <div class="actions">
             <button type="submit">Run query</button>
-            <button type="button" id="btn-example">Insert example</button>
           </div>
         </form>
 
@@ -68,14 +125,24 @@
             <table>
             <thead>
               <tr>
+                <th class="row-index">#</th>
                 {% for col in columns %}
                 <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+              <tr class="filter-row">
+                <th class="row-index"></th>
+                {% for col in columns %}
+                <th class="filter-cell">
+                  <input type="text" class="filter-input" data-col-index="{{ loop.index }}" placeholder="Filter">
+                </th>
                 {% endfor %}
               </tr>
             </thead>
             <tbody>
               {% for row in rows %}
               <tr>
+                <td class="row-index">{{ loop.index }}</td>
                 {% for col in columns %}
                 <td>{{ row[col] }}</td>
                 {% endfor %}
@@ -97,20 +164,127 @@
     </main>
   </div>
 
+  <div class="modal" id="tipModal" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-content" role="document">
+      <div class="modal-header">
+        <h3>AI prompt helper</h3>
+        <button type="button" class="modal-close" data-close="true">Close</button>
+      </div>
+      <p class="modal-sub">Copy this prompt into your AI tool to generate SQL queries for this database.</p>
+      <textarea id="tipPrompt" readonly rows="12">You are a data analyst. Generate SQLite SELECT-only queries for this database.
+
+Tables:
+{% for table in tables %}- {{ table }}{% if table_columns.get(table) %}: {{ table_columns[table]|join(', ') }}{% endif %}
+{% endfor %}
+
+Rules:
+- Use SELECT only. No INSERT/UPDATE/DELETE.
+- Show table and column names explicitly.
+- Keep queries readable with aliases.
+- Ask clarifying questions if needed.
+
+Task:
+Describe the query you need here.</textarea>
+      <div class="modal-actions">
+        <button type="button" id="copyTip">Copy prompt</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const queryBox = document.getElementById("query");
-    const exampleBtn = document.getElementById("btn-example");
     document.querySelectorAll(".table-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const table = btn.dataset.table;
-        queryBox.value = `SELECT * FROM "${table}" LIMIT 50;`;
+        queryBox.value = `SELECT * FROM "${table}" LIMIT 100;`;
         queryBox.focus();
       });
     });
-    exampleBtn.addEventListener("click", () => {
-      queryBox.value = "SELECT name, type FROM sqlite_master WHERE type='table' ORDER BY name;";
-      queryBox.focus();
+
+    document.querySelectorAll(".history-btn, .saved-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        queryBox.value = btn.dataset.query;
+        queryBox.focus();
+      });
     });
+
+    const savedForm = document.querySelector(".saved-form");
+    const savedSqlInput = document.getElementById("saved_sql");
+    if (savedForm && savedSqlInput) {
+      savedForm.addEventListener("submit", () => {
+        savedSqlInput.value = queryBox.value.trim();
+      });
+    }
+
+    const tipBtn = document.getElementById("tipBtn");
+    const tipModal = document.getElementById("tipModal");
+    const copyTip = document.getElementById("copyTip");
+    const tipPrompt = document.getElementById("tipPrompt");
+
+    const closeModal = () => {
+      tipModal.classList.remove("open");
+      tipModal.setAttribute("aria-hidden", "true");
+    };
+
+    if (tipBtn && tipModal) {
+      tipBtn.addEventListener("click", () => {
+        tipModal.classList.add("open");
+        tipModal.setAttribute("aria-hidden", "false");
+        tipPrompt.select();
+      });
+      tipModal.addEventListener("click", (event) => {
+        if (event.target && event.target.dataset.close) {
+          closeModal();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      });
+    }
+
+    if (copyTip && tipPrompt) {
+      copyTip.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(tipPrompt.value);
+          copyTip.textContent = "Copied";
+          setTimeout(() => {
+            copyTip.textContent = "Copy prompt";
+          }, 1200);
+        } catch (err) {
+          tipPrompt.select();
+          document.execCommand("copy");
+        }
+      });
+    }
+
+    const resultsTable = document.querySelector(".table-scroll table");
+    if (resultsTable) {
+      const filterInputs = resultsTable.querySelectorAll(".filter-input");
+      const bodyRows = Array.from(resultsTable.tBodies[0].rows);
+
+      const applyFilters = () => {
+        const filters = Array.from(filterInputs).map((input) => input.value.trim().toLowerCase());
+        bodyRows.forEach((row) => {
+          let visible = true;
+          filters.forEach((value, index) => {
+            if (!value || !visible) return;
+            const cell = row.cells[index + 1];
+            const text = cell ? cell.textContent.trim().toLowerCase() : "";
+            if (!text.includes(value)) {
+              visible = false;
+            }
+          });
+          row.style.display = visible ? "" : "none";
+        });
+      };
+
+      filterInputs.forEach((input) => {
+        input.addEventListener("input", applyFilters);
+      });
+    }
 
   </script>
 </body>
