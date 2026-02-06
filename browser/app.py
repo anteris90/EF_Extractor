@@ -10,6 +10,8 @@ try:
 except Exception:
     Tk = None
     filedialog = None
+import sys
+import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB_PATH = os.environ.get(
@@ -80,21 +82,44 @@ def choose_db():
     This only works when the server is running locally with GUI access (not
     headless). Returns JSON {"path": "<abs-path>"} or {"canceled": true}.
     """
-    if not filedialog:
-        return jsonify({"error": "server does not have a GUI file dialog available"}), 500
-    try:
-        root = Tk()
-        root.withdraw()
-        path = filedialog.askopenfilename(
-            title="Select SQLite database",
-            filetypes=[("SQLite DB", "*.db *.sqlite *.sqlite3"), ("All files", "*")],
-        )
-        root.destroy()
-        if not path:
-            return jsonify({"canceled": True})
-        return jsonify({"path": path})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # Try tkinter file dialog first if available and environment supports GUI.
+    if filedialog:
+        try:
+            root = Tk()
+            root.withdraw()
+            path = filedialog.askopenfilename(
+                title="Select SQLite database",
+                filetypes=[("SQLite DB", "*.db *.sqlite *.sqlite3"), ("All files", "*")],
+            )
+            root.destroy()
+            if not path:
+                return jsonify({"canceled": True})
+            return jsonify({"path": path})
+        except Exception:
+            # fall through to other mechanisms
+            pass
+
+    # On macOS, try using AppleScript (osascript) to open a native file chooser.
+    if sys.platform == "darwin":
+        try:
+            script = 'set f to choose file with prompt "Select SQLite database"\nPOSIX path of f'
+            proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            if proc.returncode != 0:
+                # User cancelled or error
+                stderr = (proc.stderr or "").strip()
+                if stderr:
+                    return jsonify({"error": stderr}), 500
+                return jsonify({"canceled": True})
+            path = proc.stdout.strip()
+            if not path:
+                return jsonify({"canceled": True})
+            return jsonify({"path": path})
+        except FileNotFoundError:
+            return jsonify({"error": "osascript not found on server"}), 500
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    return jsonify({"error": "server does not have a GUI file dialog available"}), 500
 
 
 @app.route("/api/check_db", methods=["POST"])
