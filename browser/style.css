@@ -140,7 +140,7 @@ button:hover {
 	margin: 0;
 	display: grid;
 	gap: 6px;
-	max-height: 220px;
+	max-height: 250px;
 	overflow: auto;
 }
 
