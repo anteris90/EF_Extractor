@@ -24,8 +24,6 @@ cur = conn.cursor()
 
 # ----- DROP TABLES -----
 cur.executescript("""
-DROP TABLE IF EXISTS region_neighbours;
-DROP TABLE IF EXISTS region_solar_systems;
 DROP TABLE IF EXISTS region_constellations;
 DROP TABLE IF EXISTS regions;
 """)
@@ -33,56 +31,44 @@ DROP TABLE IF EXISTS regions;
 # ----- CREATE TABLES -----
 cur.executescript("""
 CREATE TABLE IF NOT EXISTS regions (
-    region_id INTEGER PRIMARY KEY,
-    description_id INTEGER,
-    name_id INTEGER,
-    nebula_id INTEGER,
-    nebula_path TEXT,
+    regionId INTEGER PRIMARY KEY,
+    descriptionId INTEGER,
+    nameId INTEGER,
+    nebulaId INTEGER,
+    nebulaPath TEXT,
     potential REAL,
-    region_level INTEGER,
-    sector_id INTEGER,
-    wormhole_class_id INTEGER,
-    zone_level INTEGER
+    regionLevel INTEGER,
+    sectorId INTEGER,
+    wormholeClassId INTEGER,
+    zoneLevel INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS region_constellations (
-    region_id INTEGER,
-    constellation_id INTEGER,
-    PRIMARY KEY (region_id, constellation_id)
-);
-
-CREATE TABLE IF NOT EXISTS region_solar_systems (
-    region_id INTEGER,
-    solar_system_id INTEGER,
-    PRIMARY KEY (region_id, solar_system_id)
-);
-
-CREATE TABLE IF NOT EXISTS region_neighbours (
-    region_id INTEGER,
-    neighbour_region_id INTEGER,
-    PRIMARY KEY (region_id, neighbour_region_id)
+    regionId INTEGER,
+    constellationId INTEGER,
+    PRIMARY KEY (regionId, constellationId)
 );
 """)
 
 # ----- INSERT DATA -----
-for region_id_str, region in data.items():
-    region_id = int(region_id_str)
+for regionId_str, region in data.items():
+    regionId = int(regionId_str)
 
     cur.execute("""
         INSERT OR REPLACE INTO regions (
-            region_id,
-            description_id,
-            name_id,
-            nebula_id,
-            nebula_path,
+            regionId,
+            descriptionId,
+            nameId,
+            nebulaId,
+            nebulaPath,
             potential,
-            region_level,
-            sector_id,
-            wormhole_class_id,
-            zone_level
+            regionLevel,
+            sectorId,
+            wormholeClassId,
+            zoneLevel
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        region_id,
+        regionId,
         region.get("descriptionID"),
         region.get("nameID"),
         region.get("nebulaID"),
@@ -95,28 +81,13 @@ for region_id_str, region in data.items():
     ))
 
     # constellations
-    for cid in region.get("constellationIDs", []):
+    for cid in region.get("constellationIDs", region.get("regionLevels", [])):
         cur.execute("""
             INSERT OR IGNORE INTO region_constellations
-            (region_id, constellation_id)
+            (regionId, constellationId)
             VALUES (?, ?)
-        """, (region_id, cid))
+        """, (regionId, cid))
 
-    # solar systems
-    for sid in region.get("solarSystemIDs", []):
-        cur.execute("""
-            INSERT OR IGNORE INTO region_solar_systems
-            (region_id, solar_system_id)
-            VALUES (?, ?)
-        """, (region_id, sid))
-
-    # neighbours
-    for nid in region.get("neighbours", []):
-        cur.execute("""
-            INSERT OR IGNORE INTO region_neighbours
-            (region_id, neighbour_region_id)
-            VALUES (?, ?)
-        """, (region_id, nid))
 
 # ----- COMMIT & CLOSE -----
 conn.commit()

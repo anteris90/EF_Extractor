@@ -46,8 +46,6 @@ cur.execute("DROP TABLE IF EXISTS npc_stations")
 cur.execute("DROP TABLE IF EXISTS systems")
 cur.execute("DROP TABLE IF EXISTS regions")
 cur.execute("DROP TABLE IF EXISTS region_constellations")
-cur.execute("DROP TABLE IF EXISTS region_solar_systems")
-cur.execute("DROP TABLE IF EXISTS region_neighbours")
 
 # --- CREATE ---
 cur.executescript("""
@@ -155,34 +153,22 @@ CREATE TABLE npc_stations (
 );
 
 CREATE TABLE regions (
-    region_id INTEGER PRIMARY KEY,
-    description_id INTEGER,
-    name_id INTEGER,
-    nebula_id INTEGER,
-    nebula_path TEXT,
+    regionId INTEGER PRIMARY KEY,
+    descriptionId INTEGER,
+    nameId INTEGER,
+    nebulaId INTEGER,
+    nebulaPath TEXT,
     potential REAL,
-    region_level INTEGER,
-    sector_id INTEGER,
-    wormhole_class_id INTEGER,
-    zone_level INTEGER
+    regionLevel INTEGER,
+    sectorId INTEGER,
+    wormholeClassId INTEGER,
+    zoneLevel INTEGER
 );
 
 CREATE TABLE region_constellations (
-    region_id INTEGER,
-    constellation_id INTEGER,
-    PRIMARY KEY (region_id, constellation_id)
-);
-
-CREATE TABLE region_solar_systems (
-    region_id INTEGER,
-    solar_system_id INTEGER,
-    PRIMARY KEY (region_id, solar_system_id)
-);
-
-CREATE TABLE region_neighbours (
-    region_id INTEGER,
-    neighbour_region_id INTEGER,
-    PRIMARY KEY (region_id, neighbour_region_id)
+    regionId INTEGER,
+    constellationId INTEGER,
+    PRIMARY KEY (regionId, constellationId)
 );
 
 CREATE TABLE stars (
@@ -414,16 +400,6 @@ if regions_db_path.exists():
     regions_cur.execute("SELECT * FROM region_constellations")
     constellations_data = regions_cur.fetchall()
     cur.executemany("INSERT OR REPLACE INTO region_constellations VALUES (?, ?)", constellations_data)
-    
-    # Copy region_solar_systems
-    regions_cur.execute("SELECT * FROM region_solar_systems")
-    solar_systems_data = regions_cur.fetchall()
-    cur.executemany("INSERT OR REPLACE INTO region_solar_systems VALUES (?, ?)", solar_systems_data)
-    
-    # Copy region_neighbours
-    regions_cur.execute("SELECT * FROM region_neighbours")
-    neighbours_data = regions_cur.fetchall()
-    cur.executemany("INSERT OR REPLACE INTO region_neighbours VALUES (?, ?)", neighbours_data)
     
     regions_conn.close()
 
