@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SQLite Browser</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="page">
@@ -15,9 +15,11 @@
       </div>
       <div class="dbpath">
         <label for="db_path">Database path</label>
-        <form method="post" class="dbpath-form">
+        <form method="post" class="dbpath-form" id="dbpathForm">
           <input id="db_path" name="db_path" type="text" value="{{ db_path }}">
           <button type="submit">Open</button>
+          <button type="button" id="openFileBtn">Browse…</button>
+          <input id="dbFileInput" name="dbfile" type="file" accept=".db,.sqlite,.sqlite3" style="display:none">
         </form>
         {% if db_error %}
         <div class="alert error">Database error: {{ db_error }}</div>
@@ -308,6 +310,37 @@ Describe the query you need here.</textarea>
           document.execCommand("copy");
         }
       });
+    }
+
+    // File open / upload flow: trigger hidden file input, upload to server, set db_path and submit
+    const openFileBtn = document.getElementById("openFileBtn");
+    const dbFileInput = document.getElementById("dbFileInput");
+    const dbPathInput = document.getElementById("db_path");
+    const dbpathForm = document.getElementById("dbpathForm");
+
+    if (openFileBtn && dbPathInput && dbpathForm) {
+      // Instead of using a browser file input (which can't expose absolute
+      // filesystem paths), call the server to open a native file dialog on
+      // localhost and return the selected absolute path. This keeps everything
+      // local and avoids uploads.
+      openFileBtn.addEventListener("click", async () => {
+        try {
+          const resp = await fetch("/choose_db", { method: "POST" });
+          const data = await resp.json();
+          if (resp.ok) {
+            if (data.canceled) return;
+            if (data.path) {
+              dbPathInput.value = data.path;
+              dbpathForm.submit();
+            }
+          } else {
+            alert("Could not open file chooser: " + (data && data.error ? data.error : resp.statusText));
+          }
+        } catch (err) {
+          alert("Error opening file chooser: " + err);
+        }
+      });
+      
     }
 
     const resultsTable = document.querySelector(".table-scroll table");
