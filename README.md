@@ -31,7 +31,6 @@ A simple Flask web application to browse and query a SQLite database (raw SQL, r
 - **db/**: Output database (`eve_universe.db`)
 - **output/**: Extracted JSON files
 - **browser/**: Web interface for database browsing
-- **archive/**: Original scripts and documentation
 
 ## Requirements
 
@@ -129,5 +128,6 @@ Notes:
 - In case of error, check JSON files and paths.
 
 ## Contact
+
 
 If you have questions, review the scripts or ask.
