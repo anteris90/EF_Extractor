@@ -41,6 +41,14 @@ def main():
         regions_db.unlink()
         print("Deleted regions.db as it's no longer needed.")
 
+    locationcache_db = CONVERT_DIR.parent / 'db' / 'locationcache.db'
+    if locationcache_db.exists():
+        try:
+            locationcache_db.unlink()
+            print("Deleted locationcache.db as it's no longer needed.")
+        except PermissionError:
+            print("Could not delete locationcache.db (file in use), but it's no longer needed.")
+
     types_db = CONVERT_DIR.parent / 'db' / 'types.db'
     if types_db.exists():
         try:
