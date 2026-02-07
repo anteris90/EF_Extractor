@@ -1,10 +1,15 @@
 import json
 import sqlite3
-import os
 from pathlib import Path
 
 # ----- PATHS -----
-ROOT_DIR = Path(__file__).resolve().parent.parent
+def find_repo_root(start_dir: Path) -> Path:
+    for candidate in (start_dir, *start_dir.parents):
+        if (candidate / "convert").is_dir() and (candidate / "db").is_dir():
+            return candidate
+    return start_dir.parent
+
+ROOT_DIR = find_repo_root(Path(__file__).resolve().parent)
 OUTPUT_DIR = ROOT_DIR / "output"
 DB_DIR = ROOT_DIR / "db"
 
@@ -13,14 +18,18 @@ LOCALIZATION_JSON = OUTPUT_DIR / "localization.json"
 DB_PATH = DB_DIR / "regions.db"
 
 # ----- ENSURE DB DIR EXISTS -----
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+DB_DIR.mkdir(parents=True, exist_ok=True)
 
 # ----- LOAD JSON -----
 with open(JSON_PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-with open(LOCALIZATION_JSON, "r", encoding="utf-8") as f:
-    localization = json.load(f)
+if LOCALIZATION_JSON.exists():
+    with open(LOCALIZATION_JSON, "r", encoding="utf-8") as f:
+        localization = json.load(f)
+else:
+    localization = {}
+    print("[WARN] localization.json not found; names will be missing")
 
 def normalize_name(value):
     if value is None:

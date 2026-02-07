@@ -6,7 +6,13 @@ from pathlib import Path
 # PATHS
 # =====================
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+def find_repo_root(start_dir: Path) -> Path:
+    for candidate in (start_dir, *start_dir.parents):
+        if (candidate / "convert").is_dir() and (candidate / "db").is_dir():
+            return candidate
+    return start_dir.parent
+
+ROOT_DIR = find_repo_root(Path(__file__).resolve().parent)
 DB_DIR = ROOT_DIR / "db"
 OUTPUT_DIR = ROOT_DIR / "output"
 
@@ -31,11 +37,17 @@ def normalize_name(value):
 # LOAD JSON
 # =====================
 
+DB_DIR.mkdir(parents=True, exist_ok=True)
+
 with TYPES_JSON.open("r", encoding="utf-8") as f:
     types = json.load(f)
 
-with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
-    localization = json.load(f)
+if LOCALIZATION_JSON.exists():
+    with LOCALIZATION_JSON.open("r", encoding="utf-8") as f:
+        localization = json.load(f)
+else:
+    localization = {}
+    print("[WARN] localization.json not found; names will be missing")
 
 # =====================
 # SQLITE SETUP

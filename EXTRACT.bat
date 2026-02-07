@@ -21,7 +21,7 @@ REM Examples:
 REM   types,groups,dogmaattributes
 REM   industry_blueprints
 REM   solarsystemcontent
-set CONTAINERS=locationcache,systems,regions,types,solarsystemcontent,stargates
+set CONTAINERS=locationcache,systems,regions,types,solarsystemcontent
 
 
 echo [INFO] Python version check ...

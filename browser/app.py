@@ -1,8 +1,10 @@
+import csv
 import json
 import os
 import time
+import io
 import sqlite3
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from werkzeug.utils import secure_filename
 try:
     # tkinter is used to open a native file dialog on the server (localhost)
@@ -23,6 +25,18 @@ app = Flask(__name__, template_folder=".", static_folder=".", static_url_path="/
 STORE_PATH = os.path.join(BASE_DIR, "saved_queries.json")
 
 MAX_HISTORY = 100
+DEFAULT_PAGE_SIZE = 2000
+
+
+def resolve_db_path(db_path):
+    if not db_path:
+        return db_path
+    if os.path.isabs(db_path):
+        return db_path
+    candidate = os.path.abspath(os.path.join(BASE_DIR, "..", "db", db_path))
+    if os.path.exists(candidate):
+        return candidate
+    return db_path
 
 
 def list_tables(db_path):
@@ -143,11 +157,11 @@ def check_db():
     return jsonify({"exists": False})
 
 
-def run_query(db_path, sql):
+def run_query(db_path, sql, params=None):
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        cur.execute(sql)
+        cur.execute(sql, params or ())
         rows = cur.fetchall()
         columns = [d[0] for d in cur.description] if cur.description else []
         return columns, rows, cur.rowcount
@@ -193,6 +207,13 @@ def normalize_query(sql):
     return (sql or "").strip()
 
 
+def clean_select_query(sql):
+    cleaned = normalize_query(sql)
+    if cleaned.endswith(";"):
+        cleaned = cleaned[:-1].rstrip()
+    return cleaned
+
+
 def is_select_only(sql):
     cleaned = normalize_query(sql).lower()
     if not cleaned:
@@ -232,6 +253,11 @@ def index():
     error = None
     db_error = None
     elapsed_ms = None
+    has_next = False
+    has_prev = False
+    start_row = 0
+    end_row = 0
+    total_rows = None
 
     store = load_store()
 
@@ -240,12 +266,24 @@ def index():
     # If the posted db_path is a filename saved by the upload endpoint, resolve
     # it to the repository `db/` folder so we open the correct file on disk.
     try:
-        if db_path and not os.path.isabs(db_path):
-            candidate = os.path.abspath(os.path.join(BASE_DIR, "..", "db", db_path))
-            if os.path.exists(candidate):
-                db_path = candidate
+        db_path = resolve_db_path(db_path)
     except Exception:
         pass
+
+    page_size_raw = request.form.get("page_size") or request.args.get("page_size")
+    page_raw = request.form.get("page") or request.args.get("page")
+    try:
+        page_size = int(page_size_raw) if page_size_raw is not None and page_size_raw != "" else DEFAULT_PAGE_SIZE
+    except ValueError:
+        page_size = DEFAULT_PAGE_SIZE
+    try:
+        page = int(page_raw) if page_raw is not None and page_raw != "" else 1
+    except ValueError:
+        page = 1
+    if page_size <= 0:
+        page_size = DEFAULT_PAGE_SIZE
+    if page < 1:
+        page = 1
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -295,7 +333,35 @@ def index():
             else:
                 try:
                     start = time.perf_counter()
-                    columns, rows, rowcount = run_query(db_path, query)
+                    cleaned = clean_select_query(query)
+
+                    if page_size > 0:
+                        offset = (page - 1) * page_size
+                        paged_sql = f"SELECT * FROM ({cleaned}) LIMIT ? OFFSET ?"
+                        columns, rows, rowcount = run_query(
+                            db_path,
+                            paged_sql,
+                            (page_size + 1, offset),
+                        )
+                        has_next = len(rows) > page_size
+                        if has_next:
+                            rows = rows[:page_size]
+                        has_prev = page > 1
+                        start_row = offset + 1 if rows else 0
+                        end_row = offset + len(rows) if rows else 0
+                        try:
+                            _, count_rows, _ = run_query(
+                                db_path,
+                                f"SELECT COUNT(*) AS total FROM ({cleaned})",
+                            )
+                            total_rows = int(count_rows[0][0]) if count_rows else 0
+                        except Exception:
+                            total_rows = None
+                    else:
+                        columns, rows, rowcount = run_query(db_path, cleaned)
+                        start_row = 1 if rows else 0
+                        end_row = len(rows)
+                        total_rows = len(rows)
                     elapsed_ms = int((time.perf_counter() - start) * 1000)
                     add_history_entry(store, query)
                     save_store(store)
@@ -328,8 +394,55 @@ def index():
         rows=rows,
         rowcount=rowcount,
         elapsed_ms=elapsed_ms,
+        page_size=page_size,
+        page=page,
+        has_next=has_next,
+        has_prev=has_prev,
+        start_row=start_row,
+        end_row=end_row,
+        total_rows=total_rows,
         error=error,
     )
+
+
+@app.route("/export_csv", methods=["POST"])
+def export_csv():
+    sql = normalize_query(request.form.get("export_sql"))
+    if not sql:
+        return "Missing SQL query", 400
+    if not is_select_only(sql):
+        return "Read-only mode: only SELECT queries are allowed.", 400
+
+    db_path = resolve_db_path(request.form.get("db_path") or DEFAULT_DB_PATH)
+    cleaned = clean_select_query(sql)
+
+
+    def stream_rows():
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(cleaned)
+            headers = [d[0] for d in cur.description] if cur.description else []
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(headers)
+            yield buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+            while True:
+                chunk = cur.fetchmany(1000)
+                if not chunk:
+                    break
+                for row in chunk:
+                    writer.writerow(row)
+                yield buffer.getvalue()
+                buffer.seek(0)
+                buffer.truncate(0)
+
+    db_name = os.path.splitext(os.path.basename(db_path))[0]
+    filename = f"{db_name}_export.csv"
+    response = Response(stream_rows(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
 
 
 if __name__ == "__main__":
