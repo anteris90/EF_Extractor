@@ -110,7 +110,6 @@
           <input type="hidden" name="db_path" value="{{ db_path }}">
           <div class="query-header">
             <label for="query">SQL query:</label>
-            <button type="button" class="tip-btn" id="tipBtn" title="AI prompt tip">💡 Tip - Help</button>
           </div>
           <div class="query-options">
             <label for="page_size">Page size</label>
@@ -118,6 +117,7 @@
             <label for="page">Page</label>
             <input id="page" name="page" type="number" min="1" value="{{ page }}">
             <span class="muted">Higher values may be slower</span>
+            <button type="button" class="tip-btn" id="tipBtn" title="AI prompt tip">💡 Tip - Help</button>
           </div>
           <textarea id="query" name="query" rows="10">{{ query }}</textarea>
           <div class="actions">

@@ -50,6 +50,7 @@ body {
 	border-radius: 6px;
 	font-weight: 600;
 	font-size: 13px;
+	margin-left: auto;
 }
 
 .tip-btn:hover {
