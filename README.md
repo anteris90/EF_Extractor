@@ -1,4 +1,4 @@
-# EVE Frontier Data Extractor and Converter
+# Frontier Data Extractor and Converter
 
 This project provides tools to extract static data from the EVE Frontier game client and convert it into a unified SQLite database.
 
@@ -152,3 +152,4 @@ Notes:
 
 
 If you have questions, review the scripts or ask.
+
