@@ -8,14 +8,21 @@ body {
 	background: radial-gradient(circle at top, #2a0f12 0%, #12070a 55%, #0c0507 100%);
 	background-repeat: no-repeat;
 	background-attachment: fixed;
-	background-size: cover;
-	color: #f2d9d6;
-}
-
+		display: flex;
+		gap: 16px;
+		color: #c79c98;
+		font-size: 14px;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
 .page {
-	max-width: 1800px;
+	max-width: 100%;
+	width: 100%;
 	margin: 0 auto;
 	padding: 24px;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
 }
 
 .header {
@@ -78,9 +85,13 @@ h1 {
 input[type="text"] {
 	width: 100%;
 	padding: 8px 10px;
+		display: flex;
+		gap: 16px;
+		flex-wrap: wrap;
 	border: 1px solid #5a2a2a;
 	border-radius: 6px;
 	background: #14090c;
+		margin-top: 0;
 	color: #f4d7d2;
 }
 
@@ -101,6 +112,8 @@ button:hover {
 	display: grid;
 	grid-template-columns: 240px 1fr;
 	gap: 24px;
+	flex: 1;
+	align-items: stretch;
 }
 
 .sidebar {
@@ -108,7 +121,7 @@ button:hover {
 	border: 1px solid #3b1a1e;
 	border-radius: 8px;
 	padding: 16px;
-	height: fit-content;
+	height: 100%;
 }
 
 .sidebar h2 {
@@ -366,6 +379,7 @@ button:hover {
 	display: grid;
 	gap: 16px;
 	align-content: start;
+	min-height: 100%;
 }
 
 
@@ -373,6 +387,42 @@ button:hover {
 	display: block;
 	font-weight: 600;
 	margin-bottom: 6px;
+}
+
+.query-options {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	flex-wrap: wrap;
+}
+
+.query-options label {
+	margin: 0;
+}
+
+.query-options input[type="text"] {
+	max-width: 120px;
+}
+
+.query-options input[type="number"] {
+	max-width: 120px;
+	padding: 6px 8px;
+	border: 1px solid #5a2a2a;
+	border-radius: 6px;
+	background: #14090c;
+	color: #f4d7d2;
+	font-size: 13px;
+}
+
+.query-options input[type="number"]::-webkit-inner-spin-button,
+.query-options input[type="number"]::-webkit-outer-spin-button {
+	opacity: 0.6;
+	filter: invert(1);
+}
+
+.query-options input[type="number"] {
+	appearance: textfield;
 }
 
 textarea {
@@ -410,6 +460,21 @@ textarea::-webkit-scrollbar-thumb:hover {
 	margin-top: 10px;
 }
 
+
+.export-form {
+	margin-top: 8px;
+}
+
+
+.export-btn {
+	border: 1px solid #7a2a2a;
+	background: #3a1216;
+}
+
+.export-btn:hover {
+	background: #4a171c;
+}
+
 .alert {
 	padding: 10px 12px;
 	border-radius: 6px;
@@ -423,6 +488,25 @@ textarea::-webkit-scrollbar-thumb:hover {
 	gap: 16px;
 	color: #c79c98;
 	font-size: 14px;
+}
+
+.pager {
+	display: flex;
+	gap: 8px;
+	margin-top: 6px;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.pager-left {
+	display: flex;
+	gap: 8px;
+}
+
+.pager-btn[disabled] {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .table-wrap {
@@ -472,9 +556,14 @@ td {
 	white-space: normal;
 	word-break: break-word;
 }
+.pager-export {
+	margin-top: 0;
+}
 
 .row-index {
-	width: 48px;
+	width: 1%;
+	min-width: 48px;
+	white-space: nowrap;
 	text-align: right;
 	color: #c79c98;
 	font-variant-numeric: tabular-nums;

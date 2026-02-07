@@ -112,23 +112,48 @@
             <label for="query">SQL query:</label>
             <button type="button" class="tip-btn" id="tipBtn" title="AI prompt tip">💡 Tip - Help</button>
           </div>
+          <div class="query-options">
+            <label for="page_size">Page size</label>
+            <input id="page_size" name="page_size" type="number" min="1" value="{{ page_size }}" placeholder="2000">
+            <label for="page">Page</label>
+            <input id="page" name="page" type="number" min="1" value="{{ page }}">
+            <span class="muted">Higher values may be slower</span>
+          </div>
           <textarea id="query" name="query" rows="10">{{ query }}</textarea>
           <div class="actions">
             <button type="submit">Run query</button>
           </div>
         </form>
-
         {% if error %}
         <div class="alert error">{{ error }}</div>
         {% endif %}
 
         {% if columns %}
         <div class="meta">
-          <span>Rows: {{ rows|length }}</span>
+          <span>Rows: {{ rows|length }}{% if total_rows is not none %} / {{ total_rows }}{% endif %}</span>
           {% if elapsed_ms is not none %}
           <span>Time: {{ elapsed_ms }} ms</span>
           {% endif %}
+          {% if page_size > 0 %}
+          <span>Page: {{ page }}</span>
+          {% if start_row and end_row %}
+          <span>Showing: {{ start_row }}-{{ end_row }}</span>
+          {% endif %}
+          {% endif %}
         </div>
+        {% if page_size > 0 %}
+        <div class="pager">
+          <div class="pager-left">
+            <button type="button" class="pager-btn" id="prevPage" {% if not has_prev %}disabled{% endif %}>Prev</button>
+            <button type="button" class="pager-btn" id="nextPage" {% if not has_next %}disabled{% endif %}>Next</button>
+          </div>
+          <form method="post" action="/export_csv" class="export-form pager-export">
+            <input type="hidden" name="db_path" value="{{ db_path }}">
+            <input type="hidden" name="export_sql" id="export_sql">
+            <button type="submit" class="export-btn">Export CSV</button>
+          </form>
+        </div>
+        {% endif %}
         <div class="column-panel" data-db-path="{{ db_path }}" data-columns='{{ columns|tojson }}'>
           <div class="column-title">Columns (Show/Hide)</div>
           <div class="column-list">
@@ -215,10 +240,12 @@ Describe the query you need here.</textarea>
 
   <script>
     const queryBox = document.getElementById("query");
+    const pageInput = document.getElementById("page");
     document.querySelectorAll(".table-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const table = btn.dataset.table;
         queryBox.value = `SELECT * FROM "${table}" LIMIT 100;`;
+        if (pageInput) pageInput.value = "1";
         queryBox.focus();
       });
     });
@@ -226,6 +253,7 @@ Describe the query you need here.</textarea>
     document.querySelectorAll(".history-btn, .saved-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         queryBox.value = btn.dataset.query;
+        if (pageInput) pageInput.value = "1";
         queryBox.focus();
       });
     });
@@ -237,9 +265,16 @@ Describe the query you need here.</textarea>
     const savedNotesInput = document.getElementById("saved_notes");
     const savedSubmit = document.getElementById("savedSubmit");
     const savedCancel = document.getElementById("savedCancel");
+    const exportForm = document.querySelector(".export-form");
+    const exportSqlInput = document.getElementById("export_sql");
     if (savedForm && savedSqlInput) {
       savedForm.addEventListener("submit", () => {
         savedSqlInput.value = queryBox.value.trim();
+      });
+    }
+    if (exportForm && exportSqlInput) {
+      exportForm.addEventListener("submit", () => {
+        exportSqlInput.value = queryBox.value.trim();
       });
     }
 
@@ -309,6 +344,30 @@ Describe the query you need here.</textarea>
           tipPrompt.select();
           document.execCommand("copy");
         }
+      });
+    }
+
+    const queryForm = document.querySelector(".query-form");
+    const prevPageBtn = document.getElementById("prevPage");
+    const nextPageBtn = document.getElementById("nextPage");
+
+    const submitPage = (nextValue) => {
+      if (!pageInput || !queryForm) return;
+      pageInput.value = String(nextValue);
+      queryForm.submit();
+    };
+
+    if (prevPageBtn) {
+      prevPageBtn.addEventListener("click", () => {
+        const current = Number(pageInput ? pageInput.value : "1") || 1;
+        submitPage(Math.max(1, current - 1));
+      });
+    }
+
+    if (nextPageBtn) {
+      nextPageBtn.addEventListener("click", () => {
+        const current = Number(pageInput ? pageInput.value : "1") || 1;
+        submitPage(current + 1);
       });
     }
 
@@ -436,6 +495,7 @@ Describe the query you need here.</textarea>
         });
         applyColumnVisibility();
       }
+
     }
 
   </script>
