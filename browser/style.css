@@ -436,6 +436,16 @@ textarea {
 	color: #f2d9d6;
 }
 
+textarea::-webkit-resizer {
+	background-color: #1b0b0e;
+	background-image:
+		linear-gradient(135deg, transparent 0 55%, #7a2a2a 55% 60%, transparent 60%),
+		linear-gradient(135deg, transparent 0 70%, #b15151 70% 75%, transparent 75%);
+	border-top: 1px solid #3b1a1e;
+	border-left: 1px solid #3b1a1e;
+	border-bottom-right-radius: 6px;
+}
+
 textarea::-webkit-scrollbar {
 	width: 10px;
 }
