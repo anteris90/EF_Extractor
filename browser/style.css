@@ -51,10 +51,12 @@ body {
 	font-weight: 600;
 	font-size: 13px;
 	margin-left: auto;
+	opacity: 0.75;
 }
 
 .tip-btn:hover {
 	background: #7f262a;
+	opacity: 1;
 }
 
 h1 {
@@ -396,6 +398,8 @@ button:hover {
 	gap: 10px;
 	margin-bottom: 10px;
 	flex-wrap: wrap;
+	padding-bottom: 6px;
+	border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .query-options label {
