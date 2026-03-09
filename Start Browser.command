@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+START_SCRIPT="$SCRIPT_DIR/Start Browser.sh"
 
-VENV_DIR="$SCRIPT_DIR/venv"
-
-if [ ! -d "$VENV_DIR" ]; then
-    echo "ERROR: venv not found at $VENV_DIR"
-    echo "Please create it with:"
-    echo "  python3 -m venv venv"
+if [ ! -f "$START_SCRIPT" ]; then
+    echo "ERROR: Start script not found at $START_SCRIPT"
+    echo
+    read -r -p "Press Enter to close this window..." _
     exit 1
 fi
 
-# venv aktiválás
-source "$VENV_DIR/bin/activate"
+bash "$START_SCRIPT" "$@"
+STATUS=$?
 
-cd "$SCRIPT_DIR/browser" || exit 1
+echo
+if [ $STATUS -ne 0 ]; then
+    echo "Browser app exited with status $STATUS"
+else
+    echo "Browser app stopped"
+fi
 
-echo "Using python: $(which python)"
-echo "Starting Browser app..."
-
-python -u app.py
+read -r -p "Press Enter to close this window..." _
+exit $STATUS

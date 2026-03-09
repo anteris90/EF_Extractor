@@ -102,6 +102,14 @@ cd browser
 python app.py
 ```
 
+On macOS or Linux, you can use the launcher from the project root instead:
+
+```bash
+./Start\ Browser.sh
+```
+
+On macOS, you can also double-click `Start Browser.command` in Finder.
+
 Then open http://localhost:5000 in your browser.
 
 You can also set `EF_DB_PATH` to preselect a database path:
