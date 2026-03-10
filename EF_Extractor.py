@@ -137,7 +137,9 @@ def load_fsd_data(game_path, container, fsd_file, schema_file):
         return {k: v for k, v in data.items()}
     return data
 
-# Localization extraction is Windows-only because the .pickle file is not present on macOS. The extractor will detect this and skip gracefully, but the localization data will be missing from macOS dumps. A future improvement could be to implement a macOS-compatible localization extractor that reads directly from the game's data files instead of relying on the .pickle dump.
+# Localization extraction is Windows-only because the .pickle file is not present on macOS. 
+# The extractor will detect this and skip gracefully, but the localization data will be missing from macOS dumps. 
+# A future improvement could be to implement a macOS-compatible localization extractor that reads directly from the game's data files instead of relying on the .pickle dump.
 # For now, users who want localization data on macOS would need to run the extractor on Windows to get the localization.json file, and then copy that file into their macOS dump directory for use in their projects.
 #   
 
