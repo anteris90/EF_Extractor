@@ -113,6 +113,24 @@ py -3.12 debug_resfile.py ^
     -c solarsystemcontent
 ```
 
+### JSON to SQLite Converter
+The project includes a launcher for converting extracted JSON into the SQLite database.
+
+Windows (BAT):
+```
+CONVERT2DB.bat
+```
+
+macOS (command):
+
+```bash
+./CONVERT2DB.command
+```
+
+Notes:
+- The converter uses your system `python3` (falls back to `python`). On macOS ensure Homebrew Python 3.12 is installed if you rely on extractor features that require 3.12.
+- The converter script runs `convert/json_to_sqlite_main.py` and writes the output to `db/eve_universe.db` / `output/` as configured by the scripts.
+
 ### Database Browser
 
 To run the web interface for browsing the database:

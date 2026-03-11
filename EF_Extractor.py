@@ -122,24 +122,44 @@ def load_built_fsd(game_path: Path, container: str, fsd_file: Path):
 
     return None
 
-def load_schema_fsd(game_path: Path, fsd_file: Path, schema_file: Path | None):
+def load_schema_fsd(game_path: Path, fsd_file: Path, schema_file: Path | None, container: str):
+
     sys.path.insert(0, str(codeccp_root(game_path)))
+
     try:
         from fsd.schemas.binaryLoader import LoadFSDDataInPython
+
+        fsdbinary_containers = {
+            "types",
+            "groups",
+            "dogmaattributes",
+            "dogmaeffects",
+            "dogmaunits",
+            "graphicids",
+            "marketgroups",
+        }
+
+        optimized = container in fsdbinary_containers
+
         return LoadFSDDataInPython(
             str(fsd_file),
             str(schema_file) if schema_file else None,
-            False,
+            optimized,
             None,
         )
+
     finally:
         sys.path.remove(str(codeccp_root(game_path)))
 
 def load_fsd(game_path, container, fsd_file, schema_file):
-    data = load_built_fsd(game_path, container, fsd_file)
-    if data is not None:
-        return data
 
+    # Windows: use BUILT loader
+    if IS_WIN:
+        data = load_built_fsd(game_path, container, fsd_file)
+        if data is not None:
+            return data
+
+    # macOS: always schema loader
     if schema_file:
         return load_schema_fsd(game_path, fsd_file, schema_file)
 
@@ -151,42 +171,39 @@ def load_fsd_data(game_path, container, fsd_file, schema_file):
         return {k: v for k, v in data.items()}
     return data
 
-# Localization extraction is Windows-only because the .pickle file is not present on macOS. 
-# The extractor will detect this and skip gracefully, but the localization data will be missing from macOS dumps. 
-# A future improvement could be to implement a macOS-compatible localization extractor that reads directly from the game's data files instead of relying on the .pickle dump.
-# For now, users who want localization data on macOS would need to run the extractor on Windows to get the localization.json file, and then copy that file into their macOS dump directory for use in their projects.
-#   
+# Localization extraction 
 
 def extract_localization_pickle(game_path: Path, mapping: dict, out_dir: Path):
-    """
-    Windows-only localization dump.
-    Dumps localization_fsd_en-us.pickle → localization.json
-    """
 
-    if IS_MAC:
-        print("[INFO] macOS detected → skipping localization pickle dump")
+    loc_key = None
+
+    for k in mapping.keys():
+        if "localizationfsd/localization_fsd_en-us" in k:
+            loc_key = k
+            break
+
+    if not loc_key:
+        print("[WARN] localization container not found")
         return
 
-    LOC_KEY = "res:/localizationfsd/localization_fsd_en-us.pickle"
+    pickle_path = game_path / "ResFiles" / mapping[loc_key]
 
-    if LOC_KEY not in mapping:
-        print("[WARN] localization_fsd_en-us.pickle not found in resfileindex")
+    print("[INFO] Loading localization:", pickle_path)
+
+    try:
+        with open(pickle_path, "rb") as f:
+            raw = pickle.load(f)
+
+        data = normalize_localization(raw)
+
+    except Exception as e:
+        print("[WARN] pickle format unexpected:", e)
         return
-
-    pickle_path = game_path / "ResFiles" / mapping[LOC_KEY]
-
-    print("[INFO] Loading localization pickle:", pickle_path)
-
-    with open(pickle_path, "rb") as f:
-        raw = pickle.load(f)
-
-    data = normalize_localization(raw)
 
     clean = {str(k): v for k, v in data.items()}
 
-
-
     out_path = out_dir / "localization.json"
+
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(clean, f, ensure_ascii=False, indent=2)
 
