@@ -55,14 +55,33 @@ git lfs pull
 
 ## Requirements
 
-- **Python 3.12** (mandatory for extractor - game loaders are compiled for 3.12). On macOS we recommend installing Python 3.12 via Homebrew:
+- **Python 3.12** (mandatory for extractor - CCP's loaders are compiled for 3.12). On macOS, install Homebrew Python 3.12:
 
 ```bash
 brew install python@3.12
 ```
 
+- On macOS, the extractor also needs `libpython3.12.dylib` to be discoverable at runtime. `EXTRACT.command` will try to find it automatically from Homebrew and create a project-local shim in `.python-shim/` when needed.
 - A working EVE Frontier installation
 - **Python 3.x** (for converter)
+- Git LFS (required if you want the full JSON files from this repository)
+
+### macOS Prerequisites
+
+- Launch EVE Frontier at least once so the SharedCache is initialized.
+- Default game path used by `EXTRACT.command`:
+
+```text
+~/Library/Application Support/EVE Frontier/SharedCache
+```
+
+- Default `resfileindex.txt` path expected by the launcher:
+
+```text
+~/Library/Application Support/EVE Frontier/SharedCache/stillness/EVE.app/Contents/Resources/build/resfileindex.txt
+```
+
+- If `libpython3.12.dylib` is not found automatically, either install `python@3.12` via Homebrew or set `DYLD_PYTHON_SHIM` to a directory that already contains `libpython3.12.dylib`.
 
 ## Usage
 
@@ -75,7 +94,7 @@ EXTRACT.bat
 
 Or manually:
 ```bash
-py -3.12 EF_Extractor_Win_MacOS_V3.3.py ^
+py -3.12 EF_Extractor_V4.py ^
     -e "C:\Program Files\EVE Frontier" ^
     -i "C:\Program Files\EVE Frontier\stillness\resfileindex.txt" ^
     -o "output" ^
@@ -92,15 +111,34 @@ Usage (from the project root):
 ```
 
 Notes:
-- The extractor requires Python 3.12 — on macOS install it with Homebrew (`brew install python@3.12`) and ensure `python3` points to the Homebrew installation or set `PYTHON` accordingly.
+- `EXTRACT.command` runs from the repo root, defaults `GAME_PATH` to `~/Library/Application Support/EVE Frontier/SharedCache`, and resolves `resfileindex.txt` automatically inside the app bundle.
+- The launcher prefers `python3.12`, then falls back to `python3`.
+- The launcher tries to auto-configure `DYLD_LIBRARY_PATH` so CCP's macOS loaders can find `libpython3.12.dylib`. If Homebrew Python 3.12 is installed, it will create `.python-shim/libpython3.12.dylib` automatically.
 - You can override the detected EVE installation path by exporting `GAME_PATH` before running, for example:
 
 ```bash
-export GAME_PATH="/Applications/EVE Frontier"
+export GAME_PATH="$HOME/Library/Application Support/EVE Frontier/SharedCache"
 ./EXTRACT.command
 ```
 
-If you still prefer extracting on Windows (for example to reuse an existing Windows environment), the JSON output can be copied to macOS and the converter/browser tooling will work normally.
+If your installation lives somewhere else, point `GAME_PATH` at the SharedCache directory that contains `stillness/` and `ResFiles/`.
+
+If `libpython3.12.dylib` still is not detected automatically, you can point the launcher at an existing shim directory explicitly:
+
+```bash
+export DYLD_PYTHON_SHIM="/path/to/directory/containing/libpython3.12.dylib"
+./EXTRACT.command
+```
+
+The launcher currently requests these container dumps:
+
+```text
+locationcache,systems,regions,solarsystemcontent,types
+```
+
+After that, `EF_Extractor_V4.py` also attempts localization extraction and writes `output/localization.json` when the localization resource is present and readable.
+
+If you still prefer extracting on Windows, the JSON output can be copied to macOS and the converter/browser tooling will work normally.
 
 #### Debug Script
 `debug_resfile.py` is a utility to inspect and debug resfile data before extraction. It helps detect the data format and safely introspect objects.
@@ -128,8 +166,9 @@ macOS (command):
 ```
 
 Notes:
-- The converter uses your system `python3` (falls back to `python`). On macOS ensure Homebrew Python 3.12 is installed if you rely on extractor features that require 3.12.
-- The converter script runs `convert/json_to_sqlite_main.py` and writes the output to `db/eve_universe.db` / `output/` as configured by the scripts.
+- The converter uses `python3` if available, then falls back to `python`.
+- The converter script runs `convert/json_to_sqlite_main.py` from the repo root, so path handling works correctly on macOS.
+- Output is written to `db/eve_universe.db`.
 
 ### Database Browser
 
@@ -152,12 +191,24 @@ Then open http://localhost:5000 in your browser.
 
 You can also set `EF_DB_PATH` to preselect a database path:
 
-```bash
+Windows:
+
+```bat
 set EF_DB_PATH=..\db\eve_universe.db
 python app.py
 ```
 
+macOS / Linux:
+
+```bash
+export EF_DB_PATH="$(pwd)/db/eve_universe.db"
+./Start\ Browser.sh
+```
+
 Notes:
+- `Start Browser.sh` prefers `./venv/bin/python` if present, otherwise it uses `python3` or `python`.
+- On macOS, the launcher attempts to open `http://127.0.0.1:5000` automatically.
+- The browser's database chooser can use AppleScript (`osascript`) on macOS when tkinter is unavailable.
 - The template is served from `browser/index.html` (Flask template).
 - Saved queries and history persist in `browser/saved_queries.json`.
 - Column hide settings are stored locally in your browser (localStorage).
