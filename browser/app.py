@@ -28,6 +28,58 @@ MAX_HISTORY = 100
 DEFAULT_PAGE_SIZE = 2000
 
 
+def choose_db_windows():
+    import ctypes
+    from ctypes import wintypes
+
+    class OPENFILENAMEW(ctypes.Structure):
+        _fields_ = [
+            ("lStructSize", wintypes.DWORD),
+            ("hwndOwner", wintypes.HWND),
+            ("hInstance", wintypes.HINSTANCE),
+            ("lpstrFilter", wintypes.LPCWSTR),
+            ("lpstrCustomFilter", wintypes.LPWSTR),
+            ("nMaxCustFilter", wintypes.DWORD),
+            ("nFilterIndex", wintypes.DWORD),
+            ("lpstrFile", wintypes.LPWSTR),
+            ("nMaxFile", wintypes.DWORD),
+            ("lpstrFileTitle", wintypes.LPWSTR),
+            ("nMaxFileTitle", wintypes.DWORD),
+            ("lpstrInitialDir", wintypes.LPCWSTR),
+            ("lpstrTitle", wintypes.LPCWSTR),
+            ("Flags", wintypes.DWORD),
+            ("nFileOffset", wintypes.WORD),
+            ("nFileExtension", wintypes.WORD),
+            ("lpstrDefExt", wintypes.LPCWSTR),
+            ("lCustData", wintypes.LPARAM),
+            ("lpfnHook", wintypes.LPVOID),
+            ("lpTemplateName", wintypes.LPCWSTR),
+            ("pvReserved", wintypes.LPVOID),
+            ("dwReserved", wintypes.DWORD),
+            ("FlagsEx", wintypes.DWORD),
+        ]
+
+    max_file = 4096
+    file_buffer = ctypes.create_unicode_buffer(max_file)
+    dialog = OPENFILENAMEW()
+    dialog.lStructSize = ctypes.sizeof(OPENFILENAMEW)
+    dialog.lpstrFilter = "SQLite DB (*.db;*.sqlite;*.sqlite3)\0*.db;*.sqlite;*.sqlite3\0All files (*.*)\0*.*\0\0"
+    dialog.lpstrFile = ctypes.cast(file_buffer, wintypes.LPWSTR)
+    dialog.nMaxFile = max_file
+    dialog.lpstrTitle = "Select SQLite database"
+    dialog.Flags = 0x00001000 | 0x00000800 | 0x00080000
+
+    ctypes.windll.comdlg32.CommDlgExtendedError.restype = wintypes.DWORD
+
+    if ctypes.windll.comdlg32.GetOpenFileNameW(ctypes.byref(dialog)):
+        return file_buffer.value
+
+    error_code = ctypes.windll.comdlg32.CommDlgExtendedError()
+    if error_code:
+        raise OSError(f"GetOpenFileNameW failed with code {error_code}")
+    return ""
+
+
 def resolve_db_path(db_path):
     if not db_path:
         return db_path
@@ -96,6 +148,15 @@ def choose_db():
     This only works when the server is running locally with GUI access (not
     headless). Returns JSON {"path": "<abs-path>"} or {"canceled": true}.
     """
+    if sys.platform == "win32":
+        try:
+            path = choose_db_windows()
+            if not path:
+                return jsonify({"canceled": True})
+            return jsonify({"path": path})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     # Try tkinter file dialog first if available and environment supports GUI.
     if filedialog:
         try:

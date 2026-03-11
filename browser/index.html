@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SQLite Browser</title>
+  <title>Frontier DB Browser</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="page">
     <header class="header">
       <div>
-        <h1>SQLite Browser</h1>
+        <h1>Frontier DB Browser</h1>
         <p class="sub">Raw SQL explorer for a local SQLite database.</p>
       </div>
       <div class="dbpath">
@@ -187,7 +187,7 @@
             <tbody>
               {% for row in rows %}
               <tr>
-                <td class="row-index">{{ loop.index }}</td>
+                <td class="row-index">{{ start_row + loop.index0 }}</td>
                 {% for col in columns %}
                 <td>{{ row[col] }}</td>
                 {% endfor %}
@@ -371,17 +371,14 @@ Describe the query you need here.</textarea>
       });
     }
 
-    // File open / upload flow: trigger hidden file input, upload to server, set db_path and submit
+    // File open flow: ask the local Flask server to open a native file dialog
+    // and return the selected absolute path.
     const openFileBtn = document.getElementById("openFileBtn");
     const dbFileInput = document.getElementById("dbFileInput");
     const dbPathInput = document.getElementById("db_path");
     const dbpathForm = document.getElementById("dbpathForm");
 
     if (openFileBtn && dbPathInput && dbpathForm) {
-      // Instead of using a browser file input (which can't expose absolute
-      // filesystem paths), call the server to open a native file dialog on
-      // localhost and return the selected absolute path. This keeps everything
-      // local and avoids uploads.
       openFileBtn.addEventListener("click", async () => {
         try {
           const resp = await fetch("/choose_db", { method: "POST" });
@@ -399,7 +396,6 @@ Describe the query you need here.</textarea>
           alert("Error opening file chooser: " + err);
         }
       });
-      
     }
 
     const resultsTable = document.querySelector(".table-scroll table");
