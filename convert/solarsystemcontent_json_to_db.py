@@ -191,6 +191,13 @@ CREATE TABLE stars (
     starID        INTEGER,
     typeID        INTEGER,
     radius        REAL,
+    stats_radius  REAL,
+    age           REAL,
+    life          REAL,
+    locked        INTEGER,
+    luminosity    REAL,
+    mass          REAL,
+    metallicity   REAL,
     spectralClass TEXT,
     temperature   REAL
 );
@@ -375,15 +382,23 @@ for system in solarsystemcontent.values():
     # --- stars ---
     star = system.get("star")
     if star:
+        star_stats = star.get("statistics", {})
         cur.execute("""
-            INSERT INTO stars VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO stars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             system_id,
             star.get("id"),
             star.get("typeID"),
             star.get("radius"),
-            star.get("spectralClass"),
-            star.get("temperature"),
+            star_stats.get("radius"),
+            star_stats.get("age"),
+            star_stats.get("life"),
+            1 if star_stats.get("locked") else 0,
+            star_stats.get("luminosity"),
+            star_stats.get("mass"),
+            star_stats.get("metallicity"),
+            star_stats.get("spectralClass"),
+            star_stats.get("temperature"),
         ))
 
 conn.commit()

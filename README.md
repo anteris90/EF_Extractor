@@ -172,7 +172,7 @@ Notes:
 - **moons**: Moon data.
 - **stargates**: Gate data.
 - **npc_stations**: NPC stations.
-- **stars**: Star data.
+- **stars**: Star data, including nested `star.statistics` fields such as age, life, luminosity, mass, metallicity, spectral class, and temperature.
 - **regions**: Region data (includes `name`).
 - **region_constellations**: Region connections.
 - **system_planets**: Planet list per system.
