@@ -33,7 +33,7 @@ if errorlevel 1 (
 )
 
 echo [INFO] Run Extractor...
-py -3.12 EF_Extractor.py ^
+py -3.12 EF_Extractor_V4.py ^
     -e "%GAME_PATH%" ^
     -i "%RESINDEX%" ^
     -o "%OUT%" ^
