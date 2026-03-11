@@ -91,20 +91,34 @@ def safe_get(obj, key, default=None):
 # BUILT / SCHEMA LOADERS
 # ============================================================
 
+def codeccp_root(game_path: Path) -> Path:
+    return game_path / "stillness" / "EVE.app" / "Contents" / "Resources" / "build" / "code.ccp"
+
+def bin64_root(game_path: Path) -> Path:
+    if IS_MAC:
+        return game_path / "stillness" / "EVE.app" / "Contents" / "Resources" / "build" / "bin64"
+    else:
+        return game_path / "stillness" / "bin64"
+
 def load_built_fsd(game_path: Path, container: str, fsd_file: Path):
     ext = ".pyd" if IS_WIN else ".so"
     wanted = f"{container}loader{ext}".lower()
 
-    for p in bin64_root(game_path).rglob(f"*{ext}"):
+    root = bin64_root(game_path)
+
+    for p in root.rglob(f"*{ext}"):
         if p.name.lower() == wanted:
-            sys.path.insert(0, str(p.parent))
+
+            sys.path.insert(0, str(root))
             try:
                 spec = importlib.util.spec_from_file_location(p.stem, p)
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
+
                 return module.load(str(fsd_file))
+
             finally:
-                sys.path.remove(str(p.parent))
+                sys.path.remove(str(root))
 
     return None
 

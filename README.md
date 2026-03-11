@@ -55,7 +55,12 @@ git lfs pull
 
 ## Requirements
 
-- **Python 3.12** (mandatory for extractor - game loaders are compiled for 3.12)
+- **Python 3.12** (mandatory for extractor - game loaders are compiled for 3.12). On macOS we recommend installing Python 3.12 via Homebrew:
+
+```bash
+brew install python@3.12
+```
+
 - A working EVE Frontier installation
 - **Python 3.x** (for converter)
 
@@ -78,9 +83,24 @@ py -3.12 EF_Extractor_Win_MacOS_V3.3.py ^
 ```
 
 #### macOS
-**Note**: Native macOS extraction is currently not possible due to technical limitations. Although the game's code.ccp is precompiled on both platforms, Windows uses CCP's embedded C++ Python loader (.pyd) which bypasses Python's zipimport and magic number checks. On macOS, the same archive is loaded via Python's zipimport from an external interpreter, which strictly enforces bytecode ABI compatibility. As a result, Windows extraction works, but macOS native extraction does not.
+Native macOS extraction is supported via the included launcher `EXTRACT.command`.
 
-However, once the JSON files are extracted (e.g., on Windows), the converter scripts work on macOS and can process the data into the SQLite database.
+Usage (from the project root):
+
+```bash
+./EXTRACT.command
+```
+
+Notes:
+- The extractor requires Python 3.12 — on macOS install it with Homebrew (`brew install python@3.12`) and ensure `python3` points to the Homebrew installation or set `PYTHON` accordingly.
+- You can override the detected EVE installation path by exporting `GAME_PATH` before running, for example:
+
+```bash
+export GAME_PATH="/Applications/EVE Frontier"
+./EXTRACT.command
+```
+
+If you still prefer extracting on Windows (for example to reuse an existing Windows environment), the JSON output can be copied to macOS and the converter/browser tooling will work normally.
 
 #### Debug Script
 `debug_resfile.py` is a utility to inspect and debug resfile data before extraction. It helps detect the data format and safely introspect objects.
