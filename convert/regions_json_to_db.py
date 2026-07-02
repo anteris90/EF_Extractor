@@ -40,6 +40,34 @@ def normalize_name(value):
         return value[0] if value else None
     return str(value)
 
+def resolve_localized_text(localization_map, key):
+    if key is None:
+        return None
+
+    text = normalize_name(localization_map.get(str(key)))
+    if not text:
+        return None
+
+    # Some builds return an intermediate numeric token.
+    if isinstance(text, str) and text.isdigit():
+        indirect = normalize_name(localization_map.get(text))
+        if indirect:
+            return indirect
+
+    return text
+
+def resolve_region_name(region_data, localization_map):
+    # Prefer the region name embedded in regions.json.
+    direct_name = normalize_name(region_data.get("name"))
+    if direct_name and not (isinstance(direct_name, str) and direct_name.isdigit()):
+        return direct_name
+
+    localized = resolve_localized_text(localization_map, region_data.get("nameID"))
+    if localized:
+        return localized
+
+    return direct_name
+
 # ----- CONNECT SQLITE -----
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
@@ -78,8 +106,7 @@ for regionId_str, region in data.items():
     regionId = int(regionId_str)
 
     name_id = region.get("nameID")
-    raw_name = localization.get(str(name_id)) if name_id else None
-    name = normalize_name(raw_name)
+    name = resolve_region_name(region, localization)
 
     cur.execute("""
         INSERT OR REPLACE INTO regions (

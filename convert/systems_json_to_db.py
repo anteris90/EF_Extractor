@@ -87,24 +87,54 @@ def normalize_name(value):
     if isinstance(value, str):
         return value
     if isinstance(value, list):
-        # Frontier localization: első elem a "display name"
+        # Frontier localization: first element is usually the display name
         return value[0] if value else None
     return str(value)
+
+def resolve_localized_text(localization_map, key):
+    if key is None:
+        return None
+
+    text = normalize_name(localization_map.get(str(key)))
+    if not text:
+        return None
+
+    # Some builds store an intermediate numeric token in localization.
+    # Example: nameID -> "30089267"; if that token exists as a key, dereference once.
+    if isinstance(text, str) and text.isdigit():
+        indirect = normalize_name(localization_map.get(text))
+        if indirect:
+            return indirect
+
+    return text
+
+def resolve_system_name(system, localization_map):
+    # New Frontier builds provide system names directly in systems.json.
+    direct_name = normalize_name(system.get("name"))
+    if direct_name and not (isinstance(direct_name, str) and direct_name.isdigit()):
+        return direct_name
+
+    name_id = system.get("nameID")
+    localized = resolve_localized_text(localization_map, name_id)
+    if localized:
+        return localized
+
+    if direct_name:
+        return direct_name
+
+    return None
 
 for system in systems.values():
     system_id = system.get("solarSystemID")
     name_id = system.get("nameID")
-    name = localization.get(str(name_id)) if name_id else None
+    name = resolve_system_name(system, localization)
 
-    if name_id and name is None:
+    if not name:
         missing_names += 1
 
     center = system.get("center") or {}
 
     # --- systems ---
-    raw_name = localization.get(str(name_id))
-    name = normalize_name(raw_name)
-
     cur.execute("""
         INSERT INTO systems VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?

@@ -33,6 +33,34 @@ def normalize_name(value):
         return value[0] if value else None
     return str(value)
 
+def resolve_localized_text(localization_map, key):
+    if key is None:
+        return None
+
+    text = normalize_name(localization_map.get(str(key)))
+    if not text:
+        return None
+
+    # Some builds return an intermediate numeric token.
+    if isinstance(text, str) and text.isdigit():
+        indirect = normalize_name(localization_map.get(text))
+        if indirect:
+            return indirect
+
+    return text
+
+def resolve_type_name(type_data, localization_map):
+    # Future-proof: prefer direct name if this field appears in output.
+    direct_name = normalize_name(type_data.get("name"))
+    if direct_name and not (isinstance(direct_name, str) and direct_name.isdigit()):
+        return direct_name
+
+    localized = resolve_localized_text(localization_map, type_data.get("typeNameID"))
+    if localized:
+        return localized
+
+    return direct_name
+
 # =====================
 # LOAD JSON
 # =====================
@@ -88,10 +116,9 @@ for type_id_str, t in types.items():
     type_id = int(type_id_str)
 
     name_id = t.get("typeNameID")
-    raw_name = localization.get(str(name_id))
-    name = normalize_name(raw_name)
+    name = resolve_type_name(t, localization)
 
-    if name_id and name is None:
+    if not name:
         missing_names += 1
 
     cur.execute("""
